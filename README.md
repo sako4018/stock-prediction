@@ -360,6 +360,5 @@ python main.py --ticker AAPL --period 5y --train
 
 ---
 
-**Направено с ❤️ и Python**
 
-*Последна актуализация: 21 юли 2026*
+## Made on earth by Sercho and not exactly human
