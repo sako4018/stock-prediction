@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ onSelect, currentTicker, activeView, onViewChange }: SidebarProps) {
   return (
-    <aside className="w-56 h-screen bg-alt border-r border-line flex flex-col shrink-0 overflow-visible">
+    <aside className="w-56 h-screen bg-surface-alt border-r border-line flex flex-col shrink-0 overflow-visible">
       {/* Brand */}
       <div className="h-12 border-b border-line flex items-center px-4 gap-2.5 shrink-0">
         <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -50,7 +50,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
             className={`w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors ${
               activeView === item.id
                 ? 'bg-accent/10 text-accent font-medium'
-                : 'text-txt-dim hover:text-txt hover:bg-overlay'
+                : 'text-txt-dim hover:text-txt hover:bg-surface-overlay'
             }`}
           >
             <span className="text-xs w-4 text-center opacity-60">{item.icon}</span>

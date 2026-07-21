@@ -50,7 +50,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
   ] : []
 
   const MetricCard = ({ label, value, color = 'text-txt', sub }: { label: string; value: string; color?: string; sub?: string }) => (
-    <div className="bg-elevated rounded p-3">
+    <div className="bg-surface-elevated rounded p-3">
       <p className="text-xxs text-txt-muted uppercase tracking-wider mb-1">{label}</p>
       <p className={`text-lg font-semibold tabular-nums ${color}`}>{value}</p>
       {sub && <p className="text-xxs text-txt-muted mt-0.5">{sub}</p>}
@@ -58,7 +58,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
   )
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-5">
+    <div className="bg-surface-alt border border-line rounded-lg p-5">
       <div className="flex items-center justify-between mb-5">
         <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Backtest Results</span>
         <button onClick={runBacktest} disabled={loading}

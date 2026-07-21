@@ -71,7 +71,7 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
               key={ticker}
               onClick={() => onSelect(ticker)}
               className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-left transition-colors group ${
-                isActive ? 'bg-accent/10' : 'hover:bg-overlay'
+                isActive ? 'bg-accent/10' : 'hover:bg-surface-overlay'
               }`}
             >
               <span className={`text-xs font-medium ${isActive ? 'text-accent' : 'text-txt'}`}>{ticker}</span>

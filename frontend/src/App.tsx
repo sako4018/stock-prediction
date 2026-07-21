@@ -61,7 +61,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg">
+    <div className="flex min-h-screen bg-surface">
       <Sidebar
         onSelect={setTicker}
         currentTicker={ticker}
@@ -69,7 +69,7 @@ function AppContent() {
         onViewChange={setActiveView}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-12 border-b border-line flex items-center justify-between px-4 bg-alt shrink-0">
+        <header className="h-12 border-b border-line flex items-center justify-between px-4 bg-surface-alt shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-semibold text-txt">{ticker}</h2>
             <CompanyInfo ticker={ticker} compact />
@@ -81,7 +81,7 @@ function AppContent() {
             </div>
             <button
               onClick={toggleTheme}
-              className="p-1.5 rounded hover:bg-overlay text-txt-muted hover:text-txt-dim transition-colors"
+              className="p-1.5 rounded hover:bg-surface-overlay text-txt-muted hover:text-txt-dim transition-colors"
             >
               {isDark ? '☀' : '☾'}
             </button>
@@ -107,7 +107,7 @@ function PortfolioView() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-alt border border-line rounded-lg p-5">
+      <div className="bg-surface-alt border border-line rounded-lg p-5">
         <h3 className="text-xs font-semibold text-txt-muted uppercase tracking-wider mb-4">Portfolio Overview</h3>
         {portfolio ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -117,7 +117,7 @@ function PortfolioView() {
               { label: 'Invested', value: `$${portfolio.total_invested?.toLocaleString()}`, color: 'text-txt-dim' },
               { label: 'Return', value: `${portfolio.total_return >= 0 ? '+' : ''}${portfolio.total_return?.toFixed(2)}%`, color: portfolio.total_return >= 0 ? 'text-up' : 'text-down' },
             ].map((item, i) => (
-              <div key={i} className="bg-elevated rounded-lg p-3">
+              <div key={i} className="bg-surface-elevated rounded-lg p-3">
                 <p className="text-xxs text-txt-muted uppercase tracking-wider mb-1">{item.label}</p>
                 <p className={`text-lg font-semibold tabular-nums ${item.color}`}>{item.value}</p>
               </div>

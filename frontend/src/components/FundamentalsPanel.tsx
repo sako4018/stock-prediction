@@ -30,12 +30,12 @@ export default function FundamentalsPanel({ ticker }: FundamentalsPanelProps) {
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="mb-3">
       <p className="text-xxs text-txt-dim uppercase tracking-wider mb-1.5">{title}</p>
-      <div className="bg-elevated rounded p-2.5">{children}</div>
+      <div className="bg-surface-elevated rounded p-2.5">{children}</div>
     </div>
   )
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Fundamentals</span>
         <button onClick={fetchData} disabled={loading} className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-dim">
@@ -48,7 +48,7 @@ export default function FundamentalsPanel({ ticker }: FundamentalsPanelProps) {
       ) : data && !data.error ? (
         <div>
           {/* Score */}
-          <div className="text-center mb-3 py-2 bg-elevated rounded">
+          <div className="text-center mb-3 py-2 bg-surface-elevated rounded">
             <p className="text-xxs text-txt-dim uppercase">Fundamentals Score</p>
             <p className={`text-xl font-bold ${
               data.fundamentals_score?.score >= 60 ? 'text-up' :

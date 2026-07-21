@@ -65,7 +65,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       <button
         ref={buttonRef}
         onClick={openDropdown}
-        className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-overlay border border-line hover:border-line-light transition-colors text-left"
+        className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-surface-overlay border border-line hover:border-line-light transition-colors text-left"
       >
         <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
           <span className="text-xxs font-semibold text-accent">{currentTicker.slice(0, 2)}</span>
@@ -82,7 +82,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="bg-elevated border border-line rounded-lg shadow-2xl overflow-hidden animate-fade-in"
+          className="bg-surface-elevated border border-line rounded-lg shadow-2xl overflow-hidden animate-fade-in"
           style={{
             position: 'fixed',
             top: dropdownPos.top,
@@ -98,7 +98,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search company or ticker..."
-              className="w-full px-2.5 py-1.5 bg-overlay border border-line rounded text-xs text-txt placeholder-txt-dim focus:outline-none focus:border-accent"
+              className="w-full px-2.5 py-1.5 bg-surface-overlay border border-line rounded text-xs text-txt placeholder-txt-dim focus:outline-none focus:border-accent"
               autoFocus
             />
           </div>
@@ -112,7 +112,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
                 className={`px-2 py-0.5 rounded text-xxs font-medium whitespace-nowrap transition-colors ${
                   activeSector === sector
                     ? 'bg-accent text-white'
-                    : 'bg-overlay text-txt-muted hover:text-txt-dim'
+                    : 'bg-surface-overlay text-txt-muted hover:text-txt-dim'
                 }`}
               >
                 {sector}
@@ -129,11 +129,11 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
                   company.ticker === currentTicker
                     ? 'bg-accent/10'
-                    : 'hover:bg-overlay'
+                    : 'hover:bg-surface-overlay'
                 }`}
               >
                 <div className={`w-7 h-7 rounded flex items-center justify-center text-xxs font-semibold shrink-0 ${
-                  company.ticker === currentTicker ? 'bg-accent text-white' : 'bg-hover text-txt-muted'
+                  company.ticker === currentTicker ? 'bg-accent text-white' : 'bg-surface-hover text-txt-muted'
                 }`}>
                   {company.ticker.slice(0, 2)}
                 </div>

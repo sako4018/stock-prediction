@@ -63,14 +63,14 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
     const s = signal.toUpperCase()
     if (s.includes('BUY') || s.includes('BULLISH')) return 'bg-up/10 border-up/20'
     if (s.includes('SELL') || s.includes('BEARISH')) return 'bg-down/10 border-down/20'
-    return 'bg-overlay border-line'
+    return 'bg-surface-overlay border-line'
   }
 
   const getScoreBar = (score: number) => {
     const pct = ((score + 1) / 2) * 100
     const color = score > 0.1 ? '#22C55E' : score < -0.1 ? '#EF4444' : '#6B7280'
     return (
-      <div className="h-1.5 bg-overlay rounded-full overflow-hidden relative">
+      <div className="h-1.5 bg-surface-overlay rounded-full overflow-hidden relative">
         <div className="absolute inset-0 flex">
           <div className="w-1/2" />
           <div className="w-px bg-frame h-full" />
@@ -88,7 +88,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
   }
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Combined Signal</span>
         <button onClick={fetchCombined} disabled={loading}
@@ -122,7 +122,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
           <div className="space-y-3">
 
             {/* ML Signal */}
-            <div className="bg-elevated rounded p-3">
+            <div className="bg-surface-elevated rounded p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-accent" />
@@ -145,7 +145,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
             </div>
 
             {/* Technical Signal */}
-            <div className="bg-elevated rounded p-3">
+            <div className="bg-surface-elevated rounded p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-up" />
@@ -166,7 +166,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
             </div>
 
             {/* Sentiment Signal */}
-            <div className="bg-elevated rounded p-3">
+            <div className="bg-surface-elevated rounded p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />

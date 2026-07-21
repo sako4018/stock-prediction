@@ -38,7 +38,7 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
     }
   }
 
-  if (!data) return compact ? null : <div className="bg-alt border border-line rounded-lg p-4 h-24 animate-pulse" />
+  if (!data) return compact ? null : <div className="bg-surface-alt border border-line rounded-lg p-4 h-24 animate-pulse" />
 
   if (compact) {
     return (
@@ -62,12 +62,12 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
   }
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold text-txt">{data.price.ticker}</span>
-            <span className="text-xxs px-1.5 py-0.5 rounded bg-overlay text-txt-muted">{data.company.sector}</span>
+            <span className="text-xxs px-1.5 py-0.5 rounded bg-surface-overlay text-txt-muted">{data.company.sector}</span>
           </div>
           <p className="text-xs text-txt-muted mt-0.5">{data.company.name}</p>
         </div>
@@ -84,7 +84,7 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
           { label: 'Prev Close', value: `$${data.price.previous_close.toFixed(2)}` },
           { label: 'Industry', value: data.company.industry || '—' },
         ].map((item, i) => (
-          <div key={i} className="bg-elevated rounded px-2.5 py-1.5">
+          <div key={i} className="bg-surface-elevated rounded px-2.5 py-1.5">
             <p className="text-xxs text-txt-muted">{item.label}</p>
             <p className="text-xs font-medium text-txt-dim">{item.value}</p>
           </div>

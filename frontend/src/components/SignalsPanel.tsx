@@ -43,11 +43,11 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
   const getSignalBg = (signal: string) => {
     if (signal.includes('BUY') || signal.includes('OVERSOLD') || signal.includes('BULLISH')) return 'bg-up/10'
     if (signal.includes('SELL') || signal.includes('OVERBOUGHT') || signal.includes('BEARISH')) return 'bg-down/10'
-    return 'bg-overlay'
+    return 'bg-surface-overlay'
   }
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Technical Signals</span>
         <button onClick={fetchSignals} disabled={loading}

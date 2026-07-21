@@ -51,7 +51,7 @@ export default function AlertsPanel({ ticker }: Props) {
   }
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Price Alerts</span>
         <button onClick={fetchAlerts} disabled={loading} className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-dim">
@@ -62,11 +62,11 @@ export default function AlertsPanel({ ticker }: Props) {
       {/* Create Alert */}
       <div className="flex gap-2 mb-3">
         <select value={newType} onChange={e => setNewType(e.target.value)}
-          className="bg-elevated border border-line rounded px-2 py-1 text-xs text-txt flex-shrink-0">
+          className="bg-surface-elevated border border-line rounded px-2 py-1 text-xs text-txt flex-shrink-0">
           {Object.entries(typeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <input type="number" value={newValue} onChange={e => setNewValue(e.target.value)}
-          placeholder="Value" className="bg-elevated border border-line rounded px-2 py-1 text-xs text-txt w-20" />
+          placeholder="Value" className="bg-surface-elevated border border-line rounded px-2 py-1 text-xs text-txt w-20" />
         <button onClick={createAlert} disabled={creating || !newValue}
           className="px-3 py-1 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover disabled:opacity-50">
           {creating ? '...' : '+'}
@@ -79,7 +79,7 @@ export default function AlertsPanel({ ticker }: Props) {
           <p className="text-xxs text-txt-dim text-center py-4">No alerts for {ticker}</p>
         )}
         {alerts.map(alert => (
-          <div key={alert.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-overlay group">
+          <div key={alert.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-surface-overlay group">
             <div className="flex items-center gap-2">
               <span className={`w-1.5 h-1.5 rounded-full ${alert.triggered ? 'bg-warn' : 'bg-up'}`} />
               <span className="text-xs text-txt">{typeLabels[alert.alert_type] || alert.alert_type}</span>

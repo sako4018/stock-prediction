@@ -27,11 +27,11 @@ export default function MultiTimeframePanel({ ticker }: Props) {
   const getSignalBg = (s: string) => {
     if (s?.includes('BUY')) return 'bg-up/10 border-up/20'
     if (s?.includes('SELL')) return 'bg-down/10 border-down/20'
-    return 'bg-elevated border-line'
+    return 'bg-surface-elevated border-line'
   }
 
   const TimeframeCard = ({ label, data, weight }: { label: string; data: any; weight: string }) => (
-    <div className="bg-elevated rounded p-3">
+    <div className="bg-surface-elevated rounded p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-txt">{label}</span>
@@ -54,7 +54,7 @@ export default function MultiTimeframePanel({ ticker }: Props) {
   )
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Multi-Timeframe Analysis</span>
         <button onClick={fetchData} disabled={loading} className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-dim">

@@ -52,7 +52,7 @@ export default function StockChart({ ticker }: StockChartProps) {
   const periods = ['1mo', '3mo', '6mo', '1y', '2y', '5y']
 
   if (loading) {
-    return <div className="bg-alt border border-line rounded-lg h-80 animate-pulse" />
+    return <div className="bg-surface-alt border border-line rounded-lg h-80 animate-pulse" />
   }
 
   const W = 900, H = 380
@@ -64,14 +64,14 @@ export default function StockChart({ ticker }: StockChartProps) {
   const scaleX = (i: number) => pad.l + (i / data.length) * iW
 
   return (
-    <div className="bg-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4">
       {/* Controls */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
           {periods.map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-2 py-1 rounded text-xxs font-medium transition-colors ${
-                period === p ? 'bg-accent text-white' : 'text-txt-muted hover:text-txt-dim hover:bg-overlay'
+                period === p ? 'bg-accent text-white' : 'text-txt-muted hover:text-txt-dim hover:bg-surface-overlay'
               }`}>{p}</button>
           ))}
         </div>
@@ -80,7 +80,7 @@ export default function StockChart({ ticker }: StockChartProps) {
             {(['candle', 'area'] as const).map(t => (
               <button key={t} onClick={() => setChartType(t)}
                 className={`px-2.5 py-1 text-xxs font-medium transition-colors ${
-                  chartType === t ? 'bg-accent text-white' : 'text-txt-muted hover:text-txt-dim bg-overlay'
+                  chartType === t ? 'bg-accent text-white' : 'text-txt-muted hover:text-txt-dim bg-surface-overlay'
                 }`}>{t === 'candle' ? 'Candle' : 'Area'}</button>
             ))}
           </div>
