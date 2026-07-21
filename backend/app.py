@@ -38,6 +38,7 @@ from combined_signal import combine_signals
 from multi_timeframe import multi_timeframe_analysis
 from sector_analysis import sector_correlation_matrix, get_sector_summary, find_uncorrelated_pairs, get_all_sectors
 from alerts import AlertManager
+from batch_train import BatchTrainer
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -890,6 +891,55 @@ def check_alerts():
     try:
         triggered = alert_manager.check_alerts()
         return {"triggered": triggered, "count": len(triggered)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== BATCH TRAINING ====================
+
+batch_trainer = BatchTrainer()
+
+
+class BatchTrainRequest(BaseModel):
+    tickers: list[str]
+    period: str = '2y'
+    epochs: int = 50
+
+
+@app.post("/api/train/batch")
+def batch_train(request: BatchTrainRequest):
+    """Тренира модели за списък от акции."""
+    try:
+        result = batch_trainer.train_batch(request.tickers, request.period, request.epochs)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/train/sector/{sector}")
+def train_sector(sector: str, period: str = '2y', epochs: int = 50):
+    """Тренира модели за всички акции в сектор."""
+    try:
+        result = batch_trainer.train_sector(sector, period, epochs)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/train/status")
+def training_status():
+    """Статус на текущата тренировка."""
+    try:
+        return batch_trainer.get_training_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/train/models")
+def list_trained_models():
+    """Списък с всички тренирани модели."""
+    try:
+        return {"models": batch_trainer.get_trained_models()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
