@@ -351,6 +351,60 @@ def get_signals(ticker: str, period: str = "1y"):
         else:
             bb_signal = "NEUTRAL"
 
+        # ATR (Average True Range) - волатилност
+        latest_atr = df['ATR'].iloc[-1]
+        atr_percent = (latest_atr / latest_close) * 100
+        atr_signal = "HIGH VOLATILITY" if atr_percent > 3 else "LOW VOLATILITY" if atr_percent < 1 else "NORMAL"
+
+        # Stochastic Oscillator
+        latest_stoch_k = df['Stoch_K'].iloc[-1]
+        latest_stoch_d = df['Stoch_D'].iloc[-1]
+        if latest_stoch_k > 80 and latest_stoch_d > 80:
+            stoch_signal = "OVERBOUGHT (SELL)"
+        elif latest_stoch_k < 20 and latest_stoch_d < 20:
+            stoch_signal = "OVERSOLD (BUY)"
+        elif latest_stoch_k > latest_stoch_d:
+            stoch_signal = "BULLISH (BUY)"
+        else:
+            stoch_signal = "BEARISH (SELL)"
+
+        # Williams %R
+        latest_wr = df['Williams_R'].iloc[-1]
+        if latest_wr > -20:
+            wr_signal = "OVERBOUGHT (SELL)"
+        elif latest_wr < -80:
+            wr_signal = "OVERSOLD (BUY)"
+        else:
+            wr_signal = "NEUTRAL"
+
+        # Overall recommendation (weighted average of signals)
+        buy_signals = sum([
+            1 if rsi_signal.startswith("OVERSOLD") else 0,
+            1 if macd_signal == "BUY" else 0,
+            1 if bb_signal.startswith("OVERSOLD") else 0,
+            1 if stoch_signal.startswith("OVERSOLD") or stoch_signal.startswith("BULLISH") else 0,
+            1 if wr_signal.startswith("OVERSOLD") else 0
+        ])
+
+        sell_signals = sum([
+            1 if rsi_signal.startswith("OVERBOUGHT") else 0,
+            1 if macd_signal == "SELL" else 0,
+            1 if bb_signal.startswith("OVERBOUGHT") else 0,
+            1 if stoch_signal.startswith("OVERBOUGHT") or stoch_signal.startswith("BEARISH") else 0,
+            1 if wr_signal.startswith("OVERBOUGHT") else 0
+        ])
+
+        if buy_signals >= 3:
+            recommendation = "STRONG BUY"
+        elif buy_signals >= 2:
+            recommendation = "BUY"
+        elif sell_signals >= 3:
+            recommendation = "STRONG SELL"
+        elif sell_signals >= 2:
+            recommendation = "SELL"
+        else:
+            recommendation = "HOLD"
+
         return {
             "ticker": ticker.upper(),
             "current_price": float(latest_close),
@@ -361,9 +415,12 @@ def get_signals(ticker: str, period: str = "1y"):
                     "upper": float(bb_upper),
                     "lower": float(bb_lower),
                     "signal": bb_signal
-                }
+                },
+                "atr": {"value": float(latest_atr), "percent": float(atr_percent), "signal": atr_signal},
+                "stochastic": {"k": float(latest_stoch_k), "d": float(latest_stoch_d), "signal": stoch_signal},
+                "williams_r": {"value": float(latest_wr), "signal": wr_signal}
             },
-            "recommendation": "BUY" if rsi_signal.startswith("OVERSOLD") else "SELL" if rsi_signal.startswith("OVERBOUGHT") else "HOLD"
+            "recommendation": recommendation
         }
     except HTTPException:
         raise

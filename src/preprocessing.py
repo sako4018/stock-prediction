@@ -41,6 +41,9 @@ class StockDataPreprocessor:
         - MACD (Moving Average Convergence Divergence)
         - Bollinger Bands
         - Volume Change
+        - ATR (Average True Range)
+        - Stochastic Oscillator
+        - Williams %R
         """
         print("📈 Изчисляване на технически индикатори...")
 
@@ -97,6 +100,30 @@ class StockDataPreprocessor:
         # 9. Open-Close Range
         # Разликата между цената при отваряне и затваряне
         df['OC_Range'] = df['Close'] - df['Open']
+
+        # 10. ATR (Average True Range)
+        # ATR измерва волатилността на пазара
+        # Висок ATR = висока волатилност, нисък ATR = стабилен пазар
+        high_low = df['High'] - df['Low']
+        high_close = (df['High'] - df['Close'].shift()).abs()
+        low_close = (df['Low'] - df['Close'].shift()).abs()
+        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        df['ATR'] = true_range.rolling(window=14).mean()
+
+        # 11. Stochastic Oscillator
+        # Сравнява текущата цена с диапазона за определен период
+        # %K = (Close - Low_14) / (High_14 - Low_14) * 100
+        # %D = SMA(%K, 3) - сигнален线
+        low_14 = df['Low'].rolling(window=14).min()
+        high_14 = df['High'].rolling(window=14).max()
+        df['Stoch_K'] = ((df['Close'] - low_14) / (high_14 - low_14)) * 100
+        df['Stoch_D'] = df['Stoch_K'].rolling(window=3).mean()
+
+        # 12. Williams %R
+        # Подобен на Stochastic, но в обратен ред
+        # %R = (High_14 - Close) / (High_14 - Low_14) * -100
+        # > -20 = overbought, < -80 = oversold
+        df['Williams_R'] = ((high_14 - df['Close']) / (high_14 - low_14)) * -100
 
         # Премахване на редове с NaN стойности (от изчисленията)
         df = df.dropna()
