@@ -403,7 +403,8 @@ class StockPredictionModel:
         config = {
             'sequence_length': self.sequence_length,
             'n_features': self.n_features,
-            'model_name': model_name
+            'model_name': model_name,
+            'architecture': 'lstm_attention_v2'  # Версия на архитектурата
         }
 
         config_path = os.path.join(models_dir, f'{model_name}_config.json')
@@ -447,9 +448,21 @@ class StockPredictionModel:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"❌ Моделът не е намерен: {model_path}")
 
-        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        # Зареждане с backward compatibility
+        saved_state = torch.load(model_path, map_location=self.device)
+
+        try:
+            # Опит за директно зареждане (съвместима архитектура)
+            self.model.load_state_dict(saved_state)
+            print(f"✅ Модел зареден: {model_path}")
+        except RuntimeError:
+            # Ако има mismatch, зареждаме с partial weights
+            print(f"⚠️ Архитектурата е променена. Зареждане с partial weights...")
+            missing, unexpected = self.model.load_state_dict(saved_state, strict=False)
+            print(f"   Липсващи ключове: {len(missing)} (нови слоеве)")
+            print(f"   💡 Препоръка: Претренирай модела за по-добри резултати")
+
         self.model.eval()
-        print(f"✅ Модел зареден: {model_path}")
 
         return self.model
 
