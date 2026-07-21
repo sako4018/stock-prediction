@@ -20,9 +20,9 @@ export default {
         'surface-hover': '#2a2a3d',
         'line': '#222233',
         'line-light': '#2e2e44',
-        'txt': '#e8e8e8',
-        'txt-sec': '#a0a0b8',
-        'txt-dim': '#6b6b80',
+        'txt': '#ffffff',
+        'txt-sec': '#d0d0e0',
+        'txt-dim': '#9090a8',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Noto Sans', 'Helvetica', 'Arial', 'sans-serif'],
