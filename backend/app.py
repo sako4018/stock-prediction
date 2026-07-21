@@ -10,6 +10,7 @@ API Endpoints:
 - POST /api/stocks/{ticker}/train    — Тренировка на модел
 - GET  /api/stocks/{ticker}/backtest — Backtest резултати
 - GET  /api/stocks/{ticker}/signals  — Trading сигнали
+- POST /api/stocks/{ticker}/export   — Експорт на отчет
 """
 
 import sys
@@ -29,6 +30,7 @@ from data_collection import StockDataCollector
 from preprocessing import StockDataPreprocessor
 from model import StockPredictionModel
 from backtest import StockBacktester
+from export import generate_report, export_to_csv, export_to_json
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -421,6 +423,97 @@ def get_signals(ticker: str, period: str = "1y"):
                 "williams_r": {"value": float(latest_wr), "signal": wr_signal}
             },
             "recommendation": recommendation
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/stocks/{ticker}/export")
+def export_report(ticker: str, format: str = "json"):
+    """
+    Експортира отчет за акцията.
+
+    Параметри:
+    - format: 'json' или 'csv'
+    """
+    try:
+        # Събиране на данни
+        collector = StockDataCollector(ticker=ticker, period="1y", interval="1d")
+        data = collector.fetch_stock_data(save_to_csv=False)
+
+        if data is None or len(data) == 0:
+            raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+        # Сигнали
+        preprocessor = StockDataPreprocessor(data)
+        preprocessor.calculate_technical_indicators()
+        df = preprocessor.data
+
+        latest_close = df['Close'].iloc[-1]
+        latest_rsi = df['RSI'].iloc[-1]
+
+        signals = {
+            'ticker': ticker.upper(),
+            'current_price': float(latest_close),
+            'rsi': float(latest_rsi),
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # Backtest (бърз)
+        preprocessor.create_target_variable(days_ahead=1)
+        preprocessor.normalize_data()
+
+        scaled_data = preprocessor.scaled_data
+        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
+        model_data = scaled_data[feature_cols].values
+
+        X, y = preprocessor.create_sequences(model_data, seq_length=60)
+        split_idx = int(len(X) * 0.8)
+        X_train, X_test = X[:split_idx], X[split_idx:]
+        y_train, y_test = y[:split_idx], y[split_idx:]
+
+        model = StockPredictionModel(sequence_length=60, n_features=X.shape[2])
+        model_name = f'{ticker.upper()}_stock_model'
+
+        try:
+            model.load_model(model_name)
+        except:
+            val_split = int(len(X_train) * 0.9)
+            model.build_lstm_model()
+            model.train_model(X_train[:val_split], y_train[:val_split],
+                            X_train[val_split:], y_train[val_split:],
+                            epochs=30, batch_size=32)
+            model.save_model(model_name)
+
+        predictions = model.predict(X_test)
+        all_prices = preprocessor.data['Close'].values[60:]
+        test_prices = all_prices[split_idx:]
+
+        backtester = StockBacktester(
+            predictions=predictions,
+            actual_values=y_test,
+            prices=test_prices,
+            initial_capital=10000
+        )
+        backtester.calculate_accuracy_metrics()
+        backtester.generate_trading_signals(threshold=0.52)
+        backtest_results = backtester.simulate_trading(transaction_cost=0.001)
+
+        # Експорт
+        export_dir = os.path.join(os.path.dirname(__file__), '..', 'exports')
+
+        if format == 'csv':
+            filepath = export_to_csv(signals, f'{ticker}_report', export_dir)
+        else:
+            filepath = generate_report(ticker, signals, signals, backtest_results, export_dir)
+
+        return {
+            "ticker": ticker.upper(),
+            "format": format,
+            "filepath": filepath,
+            "message": f"Report exported successfully"
         }
     except HTTPException:
         raise
