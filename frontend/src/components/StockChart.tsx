@@ -26,6 +26,7 @@ export default function StockChart({ ticker }: StockChartProps) {
   const [period, setPeriod] = useState('1y')
   const [chartType, setChartType] = useState<'candle' | 'area'>('candle')
   const [showIndicators, setShowIndicators] = useState({ sma: true, bb: false, volume: true })
+  const [hoverData, setHoverData] = useState<any>(null)
 
   useEffect(() => { fetchHistory() }, [ticker, period])
 
@@ -51,6 +52,15 @@ export default function StockChart({ ticker }: StockChartProps) {
 
   const periods = ['1mo', '3mo', '6mo', '1y', '2y', '5y']
 
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const idx = Math.floor(((x - pad.l) / iW) * data.length)
+    if (idx >= 0 && idx < data.length) {
+      setHoverData(data[idx])
+    }
+  }
+
   if (loading) {
     return <div className="bg-surface-alt border border-line rounded-lg h-80 animate-pulse" />
   }
@@ -64,7 +74,19 @@ export default function StockChart({ ticker }: StockChartProps) {
   const scaleX = (i: number) => pad.l + (i / data.length) * iW
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-4">
+    <div className="bg-surface-alt border border-line rounded-lg p-4 card-smooth">
+      {/* OHLC Tooltip */}
+      {hoverData && (
+        <div className="flex items-center gap-4 mb-2 text-xs tabular-nums animate-fade-in">
+          <span className="text-txt-dim">{hoverData.Date}</span>
+          <span className="text-txt-sec">O <span className="text-txt">{hoverData.Open?.toFixed(2)}</span></span>
+          <span className="text-txt-sec">H <span className="text-up">{hoverData.High?.toFixed(2)}</span></span>
+          <span className="text-txt-sec">L <span className="text-down">{hoverData.Low?.toFixed(2)}</span></span>
+          <span className="text-txt-sec">C <span className="text-txt font-medium">{hoverData.Close?.toFixed(2)}</span></span>
+          <span className="text-txt-sec">Vol <span className="text-txt-dim">{(hoverData.Volume / 1e6).toFixed(1)}M</span></span>
+          {hoverData.SMA_20 && <span className="text-txt-sec">SMA20 <span className="text-warn">{hoverData.SMA_20?.toFixed(2)}</span></span>}
+        </div>
+      )}
       {/* Controls */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
@@ -102,7 +124,8 @@ export default function StockChart({ ticker }: StockChartProps) {
 
       {/* Chart */}
       <div className="overflow-x-auto">
-        <svg width={W} height={H} className="select-none">
+        <svg width={W} height={H} className="select-none cursor-crosshair"
+          onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
           <defs>
             <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.15} />

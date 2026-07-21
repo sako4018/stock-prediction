@@ -10,6 +10,7 @@ import CompanyInfo from './components/CompanyInfo'
 import FundamentalsPanel from './components/FundamentalsPanel'
 import MultiTimeframePanel from './components/MultiTimeframePanel'
 import AlertsPanel from './components/AlertsPanel'
+import TickerTape from './components/TickerTape'
 
 function AppContent() {
   const [ticker, setTicker] = useState<string>('AAPL')
@@ -69,6 +70,7 @@ function AppContent() {
         onViewChange={setActiveView}
       />
       <div className="flex-1 flex flex-col min-w-0">
+        <TickerTape />
         <header className="h-12 border-b border-line flex items-center justify-between px-4 bg-surface-alt shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-semibold text-txt">{ticker}</h2>

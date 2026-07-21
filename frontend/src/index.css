@@ -104,3 +104,15 @@ button, a, input, select {
 .glow-down {
   box-shadow: 0 0 15px rgba(255, 110, 64, 0.15);
 }
+
+/* Ticker tape marquee */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker-scroll 40s linear infinite;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
