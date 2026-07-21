@@ -22,40 +22,52 @@ interface Signals {
 // Semi-circle gauge component
 function Gauge({ value, min, max, label, color }: { value: number; min: number; max: number; label: string; color: string }) {
   const pct = Math.max(0, Math.min(1, (value - min) / (max - min)))
-  const angle = pct * 180
-  const r = 32
-  const cx = 40
-  const cy = 38
 
-  // Arc path
+  const size = 90
+  const cx = size / 2
+  const cy = size / 2 + 5
+  const r = 35
+
+  // Background arc (full semi-circle from left to right)
+  const bgStart = { x: cx - r, y: cy }
+  const bgEnd = { x: cx + r, y: cy }
+
+  // Value arc
   const startAngle = Math.PI
-  const endAngle = Math.PI - (angle * Math.PI / 180)
-  const x1 = cx + r * Math.cos(startAngle)
-  const y1 = cy + r * Math.sin(startAngle)
-  const x2 = cx + r * Math.cos(endAngle)
-  const y2 = cy + r * Math.sin(endAngle)
-  const largeArc = angle > 180 ? 1 : 0
+  const endAngle = Math.PI * (1 - pct)
+  const valStart = { x: cx + r * Math.cos(startAngle), y: cy + r * Math.sin(startAngle) }
+  const valEnd = { x: cx + r * Math.cos(endAngle), y: cy + r * Math.sin(endAngle) }
+  const largeArc = pct > 0.5 ? 1 : 0
+
+  // Needle position
+  const needleAngle = Math.PI * (1 - pct)
+  const nx = cx + (r - 5) * Math.cos(needleAngle)
+  const ny = cy + (r - 5) * Math.sin(needleAngle)
 
   return (
     <div className="flex flex-col items-center">
-      <svg width="80" height="50" viewBox="0 0 80 50">
+      <svg width={size} height={size * 0.65} viewBox={`0 0 ${size} ${size * 0.65}`}>
         {/* Background arc */}
         <path
-          d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-          fill="none" stroke="#222233" strokeWidth="6" strokeLinecap="round"
+          d={`M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 0 1 ${bgEnd.x} ${bgEnd.y}`}
+          fill="none" stroke="#222233" strokeWidth="7" strokeLinecap="round"
         />
         {/* Value arc */}
-        {pct > 0.01 && (
+        {pct > 0.005 && (
           <path
-            d={`M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`}
-            fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+            d={`M ${valStart.x} ${valStart.y} A ${r} ${r} 0 ${largeArc} 1 ${valEnd.x} ${valEnd.y}`}
+            fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
           />
         )}
-        {/* Needle dot */}
-        <circle cx={x2} cy={y2} r="3" fill={color} />
+        {/* Needle */}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="3" fill={color} />
+        {/* Min/Max labels */}
+        <text x={cx - r - 2} y={cy + 12} fill="#6b6b80" fontSize="8" textAnchor="middle">{min}</text>
+        <text x={cx + r + 2} y={cy + 12} fill="#6b6b80" fontSize="8" textAnchor="middle">{max}</text>
       </svg>
-      <span className="text-xxs text-txt-dim mt-0.5">{label}</span>
-      <span className="text-xs font-bold tabular-nums text-txt">{value.toFixed(1)}</span>
+      <span className="text-xxs text-txt-dim mt-1">{label}</span>
+      <span className="text-sm font-bold tabular-nums text-txt">{value.toFixed(1)}</span>
     </div>
   )
 }
