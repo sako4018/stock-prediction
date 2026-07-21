@@ -35,6 +35,7 @@ from export import generate_report, export_to_csv, export_to_json
 from portfolio import PortfolioTracker
 from sentiment import get_news_sentiment
 from combined_signal import combine_signals
+from multi_timeframe import multi_timeframe_analysis
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -384,6 +385,18 @@ def get_combined_signal(ticker: str, period: str = "2y"):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/stocks/{ticker}/multi-timeframe")
+def get_multi_timeframe(ticker: str):
+    """
+    Multi-timeframe анализ: Daily + Weekly + Monthly сигнали.
+    """
+    try:
+        result = multi_timeframe_analysis(ticker)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
