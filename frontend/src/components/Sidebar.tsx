@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { id: 'predict', label: 'Predict', icon: '◉' },
   { id: 'backtest', label: 'Backtest', icon: '⊞' },
   { id: 'signals', label: 'Signals', icon: '◎' },
+  { id: 'fundamentals', label: 'Analysis', icon: '◈' },
   { id: 'portfolio', label: 'Portfolio', icon: '▤' },
 ]
 

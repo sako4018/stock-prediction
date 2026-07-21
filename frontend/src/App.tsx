@@ -7,6 +7,8 @@ import SignalsPanel from './components/SignalsPanel'
 import BacktestPanel from './components/BacktestPanel'
 import StockChart from './components/StockChart'
 import CompanyInfo from './components/CompanyInfo'
+import FundamentalsPanel from './components/FundamentalsPanel'
+import MultiTimeframePanel from './components/MultiTimeframePanel'
 
 function AppContent() {
   const [ticker, setTicker] = useState<string>('AAPL')
@@ -44,6 +46,13 @@ function AppContent() {
         )
       case 'portfolio':
         return <PortfolioView />
+      case 'fundamentals':
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <FundamentalsPanel ticker={ticker} />
+            <MultiTimeframePanel ticker={ticker} />
+          </div>
+        )
       default:
         return <Dashboard ticker={ticker} />
     }
