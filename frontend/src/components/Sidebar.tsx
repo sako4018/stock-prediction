@@ -22,12 +22,18 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
     <aside className="w-56 h-screen bg-alt border-r border-line flex flex-col shrink-0 overflow-visible">
       {/* Brand */}
       <div className="h-12 border-b border-line flex items-center px-4 gap-2.5 shrink-0">
-        <div className="w-6 h-6 rounded bg-accent flex items-center justify-center">
-          <span className="text-white text-xs font-bold">S</span>
-        </div>
-        <div>
-          <span className="text-sm font-semibold text-txt tracking-tight">StockPredict</span>
-        </div>
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="4.5" y1="2" x2="4.5" y2="5" stroke="#3B82F6" strokeWidth="1.2" strokeLinecap="round" />
+          <rect x="3" y="5" width="3" height="8" rx="0.5" fill="#3B82F6" />
+          <line x1="4.5" y1="13" x2="4.5" y2="16" stroke="#3B82F6" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="9.5" y1="0.5" x2="9.5" y2="3" stroke="#2962FF" strokeWidth="1.2" strokeLinecap="round" />
+          <rect x="8" y="3" width="3" height="12" rx="0.5" fill="#2962FF" />
+          <line x1="9.5" y1="15" x2="9.5" y2="18" stroke="#2962FF" strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="14.5" y1="3.5" x2="14.5" y2="6" stroke="#3B82F6" strokeWidth="1.2" strokeLinecap="round" />
+          <rect x="13" y="6" width="3" height="7" rx="0.5" fill="#3B82F6" />
+          <line x1="14.5" y1="13" x2="14.5" y2="15.5" stroke="#3B82F6" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+        <span className="text-sm font-semibold text-txt tracking-tight">StockPredict</span>
       </div>
 
       {/* Company Selector */}
