@@ -5,8 +5,10 @@ Ensemble Model Module
 
 Модели:
 - LSTM (deep learning)
-- XGBoost (gradient boosting)
+- Gradient Boosting (sklearn)
 - Random Forest (ensemble)
+- LightGBM (fast gradient boosting)
+- CatBoost (categorical-aware boosting)
 
 Предимство: Ensemble обикновено е по-точен от всеки отделен модел.
 """
@@ -19,17 +21,23 @@ import joblib
 import os
 import json
 
+# Optional advanced models
+try:
+    import lightgbm as lgb
+    HAS_LGBM = True
+except ImportError:
+    HAS_LGBM = False
+
+try:
+    import catboost as cb
+    HAS_CATBOOST = True
+except ImportError:
+    HAS_CATBOOST = False
+
 
 class EnsembleModel:
     """
-    Ensemble модел комбиниращ LSTM, XGBoost и Random Forest.
-
-    Параметри:
-    ----------
-    sequence_length : int
-        Дължина на последователността
-    n_features : int
-        Брой features
+    Ensemble модел комбиниращ LSTM, GradientBoosting, Random Forest, LightGBM, CatBoost.
     """
 
     def __init__(self, sequence_length=60, n_features=20):
@@ -38,7 +46,9 @@ class EnsembleModel:
         self.lstm_model = None
         self.rf_model = None
         self.gb_model = None
-        self.weights = {'lstm': 0.5, 'rf': 0.25, 'gb': 0.25}
+        self.lgbm_model = None
+        self.catboost_model = None
+        self.weights = {'lstm': 0.30, 'rf': 0.15, 'gb': 0.15, 'lgbm': 0.20, 'catboost': 0.20}
 
     def prepare_flat_data(self, X):
         """
@@ -82,6 +92,47 @@ class EnsembleModel:
         self.gb_model.fit(X_flat, y_train)
         print("✅ Gradient Boosting трениран!")
         return self.gb_model
+
+    def train_lgbm_model(self, X_train, y_train, n_estimators=200):
+        """Тренира LightGBM модел."""
+        if not HAS_LGBM:
+            print("⚠️ LightGBM не е инсталиран")
+            return None
+        print("🚀 Трениране на LightGBM...")
+        X_flat = self.prepare_flat_data(X_train)
+        self.lgbm_model = lgb.LGBMRegressor(
+            n_estimators=n_estimators,
+            max_depth=6,
+            learning_rate=0.05,
+            num_leaves=31,
+            min_child_samples=10,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=42,
+            verbose=-1
+        )
+        self.lgbm_model.fit(X_flat, y_train)
+        print("✅ LightGBM трениран!")
+        return self.lgbm_model
+
+    def train_catboost_model(self, X_train, y_train, iterations=200):
+        """Тренира CatBoost модел."""
+        if not HAS_CATBOOST:
+            print("⚠️ CatBoost не е инсталиран")
+            return None
+        print("🐱 Трениране на CatBoost...")
+        X_flat = self.prepare_flat_data(X_train)
+        self.catboost_model = cb.CatBoostRegressor(
+            iterations=iterations,
+            depth=6,
+            learning_rate=0.05,
+            l2_leaf_reg=3,
+            random_seed=42,
+            verbose=0
+        )
+        self.catboost_model.fit(X_flat, y_train)
+        print("✅ CatBoost трениран!")
+        return self.catboost_model
 
     def predict(self, X, lstm_predictions=None):
         """
@@ -127,6 +178,18 @@ class EnsembleModel:
             gb_pred = self.gb_model.predict(X_flat)
             predictions.append(gb_pred * self.weights['gb'])
 
+        # LightGBM предсказания
+        if self.lgbm_model is not None:
+            X_flat = self.prepare_flat_data(X)
+            lgbm_pred = self.lgbm_model.predict(X_flat)
+            predictions.append(lgbm_pred * self.weights['lgbm'])
+
+        # CatBoost предсказания
+        if self.catboost_model is not None:
+            X_flat = self.prepare_flat_data(X)
+            cat_pred = self.catboost_model.predict(X_flat)
+            predictions.append(cat_pred * self.weights['catboost'])
+
         # Комбиниране
         ensemble_pred = np.sum(predictions, axis=0)
         return ensemble_pred
@@ -165,6 +228,18 @@ class EnsembleModel:
             gb_acc = accuracy_score(direction_true, (gb_pred > 0.5).astype(int)) * 100
             results['gradient_boosting'] = {'accuracy': gb_acc}
 
+        if self.lgbm_model is not None:
+            X_flat = self.prepare_flat_data(X_test)
+            lgbm_pred = self.lgbm_model.predict(X_flat)
+            lgbm_acc = accuracy_score(direction_true, (lgbm_pred > 0.5).astype(int)) * 100
+            results['lightgbm'] = {'accuracy': lgbm_acc}
+
+        if self.catboost_model is not None:
+            X_flat = self.prepare_flat_data(X_test)
+            cat_pred = self.catboost_model.predict(X_flat)
+            cat_acc = accuracy_score(direction_true, (cat_pred > 0.5).astype(int)) * 100
+            results['catboost'] = {'accuracy': cat_acc}
+
         print(f"\n📈 Резултати:")
         print(f"   {'Модел':<25} {'Точност':<10}")
         print(f"   {'-'*35}")
@@ -182,6 +257,10 @@ class EnsembleModel:
             joblib.dump(self.rf_model, os.path.join(models_dir, f'{model_name}_rf.joblib'))
         if self.gb_model is not None:
             joblib.dump(self.gb_model, os.path.join(models_dir, f'{model_name}_gb.joblib'))
+        if self.lgbm_model is not None:
+            joblib.dump(self.lgbm_model, os.path.join(models_dir, f'{model_name}_lgbm.joblib'))
+        if self.catboost_model is not None:
+            self.catboost_model.save_model(os.path.join(models_dir, f'{model_name}_catboost.cbm'))
 
         config = {
             'weights': self.weights,
@@ -211,4 +290,13 @@ class EnsembleModel:
         if os.path.exists(gb_path):
             self.gb_model = joblib.load(gb_path)
 
-        print(f"✅ Ensemble модели заредени")
+        lgbm_path = os.path.join(models_dir, f'{model_name}_lgbm.joblib')
+        if os.path.exists(lgbm_path):
+            self.lgbm_model = joblib.load(lgbm_path)
+
+        cat_path = os.path.join(models_dir, f'{model_name}_catboost.cbm')
+        if os.path.exists(cat_path) and HAS_CATBOOST:
+            self.catboost_model = cb.CatBoostRegressor()
+            self.catboost_model.load_model(cat_path)
+
+        print(f"✅ Ensemble модели заредени ({sum([self.rf_model, self.gb_model, self.lgbm_model, self.catboost_model])} tree models)")
