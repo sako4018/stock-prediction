@@ -415,6 +415,179 @@ class StockBacktester:
         return summary
 
 
+class WalkForwardValidator:
+    """
+    Walk-Forward Validation - по-реалистичен backtest.
+    Вместо да разделим данните веднъж, тренираме на滾ing window.
+
+    Параметри:
+    ----------
+    train_window : int
+        Брой дни за трениране (по подразбиране 252 = 1 година)
+    test_window : int
+        Брой дни за тестване (по подразбиране 63 = 1 тримесечие)
+    step_size : int
+        Колко дни да преместим window-а (по подразбиране 21 = 1 месец)
+    """
+
+    def __init__(self, train_window=252, test_window=63, step_size=21):
+        self.train_window = train_window
+        self.test_window = test_window
+        self.step_size = step_size
+        self.fold_results = []
+
+    def run(self, model_class, X, y, prices, initial_capital=10000, **model_kwargs):
+        """
+        Изпълнява walk-forward validation.
+
+        Параметри:
+        ----------
+        model_class : class
+            Класът на модела (напр. StockPredictionModel)
+        X : numpy.array
+            Входни данни (3D за LSTM)
+        y : numpy.array
+            Target стойности
+        prices : numpy.array
+            Реални цени
+        initial_capital : float
+            Начален капитал
+        model_kwargs : dict
+            Допълнителни параметри за модела
+
+        Връща:
+        -------
+        dict
+            Резултати от walk-forward validation
+        """
+        print(f"\n🔄 Walk-Forward Validation")
+        print(f"   Train window: {self.train_window} дни")
+        print(f"   Test window: {self.test_window} дни")
+        print(f"   Step size: {self.step_size} дни")
+        print(f"   Total data: {len(X)} дни\n")
+
+        self.fold_results = []
+        all_predictions = []
+        all_actuals = []
+        all_prices = []
+
+        start = self.train_window
+        fold = 0
+
+        while start + self.test_window <= len(X):
+            fold += 1
+            train_end = start
+            test_end = min(start + self.test_window, len(X))
+
+            # Train data
+            X_train = X[:train_end]
+            y_train = y[:train_end]
+
+            # Test data
+            X_test = X[train_end:test_end]
+            y_test = y[train_end:test_end]
+            test_prices = prices[train_end:test_end] if len(prices) > test_end else prices[train_end:]
+
+            if len(X_test) == 0 or len(test_prices) == 0:
+                break
+
+            # Трениране на модел
+            model = model_class(
+                sequence_length=X_train.shape[1],
+                n_features=X_train.shape[2],
+                **model_kwargs
+            )
+            model.build_lstm_model()
+
+            # Split за validation
+            val_split = int(len(X_train) * 0.9)
+            model.train_model(
+                X_train[:val_split], y_train[:val_split],
+                X_train[val_split:], y_train[val_split:],
+                epochs=30, batch_size=32
+            )
+
+            # Предсказания
+            predictions = model.predict(X_test).flatten()
+
+            # Оценка на fold-а
+            direction_pred = (predictions > 0.5).astype(int)
+            direction_true = (y_test > 0.5).astype(int)
+            accuracy = accuracy_score(direction_true, direction_pred) * 100
+
+            # Trading simulation за този fold
+            capital = initial_capital
+            position = 0
+            for i in range(len(predictions)):
+                if predictions[i] > 0.55 and position == 0:
+                    shares = capital / test_prices[i]
+                    capital -= shares * test_prices[i] * 1.001
+                    position = 1
+                elif predictions[i] < 0.45 and position == 1:
+                    capital += shares * test_prices[i] * 0.999
+                    position = 0
+
+            if position == 1:
+                capital += shares * test_prices[-1] * 0.999
+
+            fold_return = ((capital - initial_capital) / initial_capital) * 100
+
+            fold_result = {
+                'fold': fold,
+                'train_end': train_end,
+                'test_start': train_end,
+                'test_end': test_end,
+                'accuracy': accuracy,
+                'return_pct': fold_return,
+                'final_capital': capital
+            }
+            self.fold_results.append(fold_result)
+
+            all_predictions.extend(predictions)
+            all_actuals.extend(y_test)
+            all_prices.extend(test_prices)
+
+            print(f"   Fold {fold}: accuracy={accuracy:.1f}%, return={fold_return:+.2f}%")
+
+            start += self.step_size
+
+        # Общ резултат
+        total_return = 0
+        if self.fold_results:
+            avg_accuracy = np.mean([f['accuracy'] for f in self.fold_results])
+            avg_return = np.mean([f['return_pct'] for f in self.fold_results])
+            total_return = self.fold_results[-1]['return_pct']
+
+            # Buy and Hold сравнение
+            if len(all_prices) > 1:
+                bnh_return = ((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100
+            else:
+                bnh_return = 0
+        else:
+            avg_accuracy = 0
+            avg_return = 0
+            bnh_return = 0
+
+        results = {
+            'total_folds': fold,
+            'avg_accuracy': avg_accuracy,
+            'avg_return': avg_return,
+            'total_return': total_return,
+            'buy_and_hold_return': bnh_return,
+            'outperformance': total_return - bnh_return,
+            'fold_results': self.fold_results
+        }
+
+        print(f"\n📊 Walk-Forward Summary:")
+        print(f"   Folds: {fold}")
+        print(f"   Avg Accuracy: {avg_accuracy:.1f}%")
+        print(f"   Avg Return: {avg_return:+.2f}%")
+        print(f"   Total Return: {total_return:+.2f}%")
+        print(f"   Buy & Hold: {bnh_return:+.2f}%")
+
+        return results
+
+
 # Тестване на модула
 if __name__ == "__main__":
     print("🚀 Тестване на Backtesting Module\n")
