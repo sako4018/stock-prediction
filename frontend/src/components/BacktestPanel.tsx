@@ -181,7 +181,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
                   }`}>
                     {data.results.sharpe_ratio?.toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-500">>1 = Good</p>
+                  <p className="text-xs text-gray-500">{">"}1 = Good</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-500">Sortino Ratio</p>
@@ -191,7 +191,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
                   }`}>
                     {data.results.sortino_ratio?.toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-500">>1 = Good</p>
+                  <p className="text-xs text-gray-500">{">"}1 = Good</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-500">Max Drawdown</p>
@@ -201,7 +201,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
                   }`}>
                     {data.results.max_drawdown?.toFixed(2)}%
                   </p>
-                  <p className="text-xs text-gray-500">>-20% = Good</p>
+                  <p className="text-xs text-gray-500">{">"}-20% = Good</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-500">Volatility</p>
@@ -222,7 +222,6 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
                 </div>
               </div>
             </div>
-          </div>
           </div>
         </div>
       ) : (

@@ -171,7 +171,7 @@ class StockPredictionModel:
         PyTorch Model
             Компилиран LSTM модел
         """
-        print("🏗️ Създаване на LSTM модел...")
+        print("Building LSTM model...")
 
         self.model = LSTMModel(
             n_features=self.n_features,
