@@ -41,6 +41,7 @@ from alerts import AlertManager
 from batch_train import BatchTrainer
 from performance import PerformanceTracker
 from fundamentals import get_fundamentals, get_valuation_comparison
+from portfolio_optimization import optimize_portfolio, optimize_min_volatility, calculate_efficient_frontier, get_diversification_metrics
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -1005,6 +1006,56 @@ def compare_valuation(tickers: list):
     """Сравнение на valuation между компании."""
     try:
         return get_valuation_comparison(tickers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PORTFOLIO OPTIMIZATION ====================
+
+class OptimizeRequest(BaseModel):
+    tickers: list[str]
+    period: str = '2y'
+    risk_free_rate: float = 0.02
+
+
+@app.post("/api/optimize/max-sharpe")
+def optimize_max_sharpe(request: OptimizeRequest):
+    """Оптимално портфолио по Maximum Sharpe Ratio."""
+    try:
+        from portfolio_optimization import fetch_price_data
+        prices = fetch_price_data(request.tickers, request.period)
+        return optimize_portfolio(prices, request.risk_free_rate)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/optimize/min-volatility")
+def optimize_min_vol(request: OptimizeRequest):
+    """Портфолио с минимална волатилност."""
+    try:
+        from portfolio_optimization import fetch_price_data
+        prices = fetch_price_data(request.tickers, request.period)
+        return optimize_min_volatility(prices)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/optimize/efficient-frontier")
+def efficient_frontier(request: OptimizeRequest, n_points: int = 20):
+    """Efficient frontier chart data."""
+    try:
+        from portfolio_optimization import fetch_price_data
+        prices = fetch_price_data(request.tickers, request.period)
+        return {"frontier": calculate_efficient_frontier(prices, n_points)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/optimize/diversification")
+def diversification_check(request: OptimizeRequest):
+    """Метрики за диверсификация."""
+    try:
+        return get_diversification_metrics(request.tickers, period=request.period)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
