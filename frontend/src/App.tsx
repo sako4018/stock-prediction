@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ThemeProvider, useTheme } from './ThemeContext'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
@@ -12,11 +12,39 @@ import MultiTimeframePanel from './components/MultiTimeframePanel'
 import AlertsPanel from './components/AlertsPanel'
 import TickerTape from './components/TickerTape'
 
+const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
+
 function AppContent() {
   const [ticker, setTicker] = useState<string>('AAPL')
   const [activeView, setActiveView] = useState<string>('dashboard')
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      // Don't trigger if typing in an input
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      // 1-6: switch views
+      if (VIEW_KEYS[e.key]) {
+        e.preventDefault()
+        setActiveView(VIEW_KEYS[e.key])
+      }
+      // / : focus search
+      if (e.key === '/') {
+        e.preventDefault()
+        document.querySelector<HTMLInputElement>('[placeholder*="Search"]')?.focus()
+      }
+      // t: toggle theme
+      if (e.key === 't') {
+        e.preventDefault()
+        toggleTheme()
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [toggleTheme])
 
   const renderView = () => {
     switch (activeView) {

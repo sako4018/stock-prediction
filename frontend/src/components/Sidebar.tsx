@@ -9,12 +9,12 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Overview', icon: '◫' },
-  { id: 'predict', label: 'Predict', icon: '◉' },
-  { id: 'backtest', label: 'Backtest', icon: '⊞' },
-  { id: 'signals', label: 'Signals', icon: '◎' },
-  { id: 'fundamentals', label: 'Analysis', icon: '◈' },
-  { id: 'portfolio', label: 'Portfolio', icon: '▤' },
+  { id: 'dashboard', label: 'Overview', icon: '◫', key: '1' },
+  { id: 'predict', label: 'Predict', icon: '◉', key: '2' },
+  { id: 'backtest', label: 'Backtest', icon: '⊞', key: '3' },
+  { id: 'signals', label: 'Signals', icon: '◎', key: '4' },
+  { id: 'fundamentals', label: 'Analysis', icon: '◈', key: '5' },
+  { id: 'portfolio', label: 'Portfolio', icon: '▤', key: '6' },
 ]
 
 export default function Sidebar({ onSelect, currentTicker, activeView, onViewChange }: SidebarProps) {
@@ -55,6 +55,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
           >
             <span className="text-xs w-4 text-center opacity-60">{item.icon}</span>
             {item.label}
+            <span className="ml-auto text-xxs text-txt-dim opacity-0 group-hover:opacity-100 transition-opacity">{item.key}</span>
           </button>
         ))}
       </nav>
