@@ -39,6 +39,7 @@ from multi_timeframe import multi_timeframe_analysis
 from sector_analysis import sector_correlation_matrix, get_sector_summary, find_uncorrelated_pairs, get_all_sectors
 from alerts import AlertManager
 from batch_train import BatchTrainer
+from performance import PerformanceTracker
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -940,6 +941,49 @@ def list_trained_models():
     """Списък с всички тренирани модели."""
     try:
         return {"models": batch_trainer.get_trained_models()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PERFORMANCE TRACKING ====================
+
+perf_tracker = PerformanceTracker()
+
+
+@app.post("/api/performance/record")
+def record_prediction(ticker: str, signal: str, predicted_value: float,
+                      actual_price: float, confidence: float = 0):
+    """Записва предсказание за проследяване."""
+    try:
+        return perf_tracker.record_prediction(ticker, signal, predicted_value, actual_price, confidence)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/performance/verify")
+def verify_pending(days_after: int = 5):
+    """Автоматично верифицира pending предсказания."""
+    try:
+        count = perf_tracker.auto_verify_pending(days_after)
+        return {"verified": count, "pending": perf_tracker.get_pending_count()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/performance/{ticker}")
+def get_performance(ticker: str):
+    """Метрики за точност на модела."""
+    try:
+        return perf_tracker.get_performance(ticker)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/performance/{ticker}/trend")
+def get_accuracy_trend(ticker: str, window: int = 10):
+    """Точността във времето."""
+    try:
+        return {"trend": perf_tracker.get_accuracy_trend(ticker, window)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
