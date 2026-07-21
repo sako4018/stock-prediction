@@ -15,11 +15,9 @@ LSTM (Long Short-Term Memory) е тип neural network, който е много
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import mean_squared_error, mean_absolute_error, accuracy_score
 import joblib
 import os
@@ -27,13 +25,77 @@ import json
 
 # Проверка дали има GPU
 print("🔍 Проверка на GPU...")
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    print(f"✅ Открити {len(gpus)} GPU устройства")
-    for gpu in gpus:
-        print(f"   {gpu}")
+if torch.cuda.is_available():
+    print(f"✅ Открито GPU: {torch.cuda.get_device_name(0)}")
+    print(f"   CUDA версия: {torch.version.cuda}")
+    device = torch.device('cuda')
 else:
     print("⚠️ GPU не е открито, използва се CPU")
+    device = torch.device('cpu')
+
+
+class LSTMModel(nn.Module):
+    """
+    PyTorch LSTM архитектура за stock prediction.
+    """
+
+    def __init__(self, n_features, sequence_length, lstm_units=[128, 64, 32], dropout_rate=0.2):
+        super(LSTMModel, self).__init__()
+
+        self.n_features = n_features
+        self.sequence_length = sequence_length
+
+        # LSTM слоеве
+        self.lstm1 = nn.LSTM(n_features, lstm_units[0], batch_first=True)
+        self.dropout1 = nn.Dropout(dropout_rate)
+        self.batch_norm1 = nn.BatchNorm1d(lstm_units[0])
+
+        self.lstm2 = nn.LSTM(lstm_units[0], lstm_units[1], batch_first=True)
+        self.dropout2 = nn.Dropout(dropout_rate)
+        self.batch_norm2 = nn.BatchNorm1d(lstm_units[1])
+
+        self.lstm3 = nn.LSTM(lstm_units[1], lstm_units[2], batch_first=True)
+        self.dropout3 = nn.Dropout(dropout_rate)
+        self.batch_norm3 = nn.BatchNorm1d(lstm_units[2])
+
+        # Dense слоеве
+        self.fc1 = nn.Linear(lstm_units[2], 25)
+        self.relu = nn.ReLU()
+        self.dropout4 = nn.Dropout(dropout_rate / 2)
+
+        # Изход
+        self.fc2 = nn.Linear(25, 1)
+
+    def forward(self, x):
+        # LSTM слой 1
+        lstm_out, _ = self.lstm1(x)
+        lstm_out = self.dropout1(lstm_out)
+        # BatchNorm очаква (batch, features, sequence)
+        lstm_out = lstm_out.permute(0, 2, 1)
+        lstm_out = self.batch_norm1(lstm_out)
+        lstm_out = lstm_out.permute(0, 2, 1)
+
+        # LSTM слой 2
+        lstm_out, _ = self.lstm2(lstm_out)
+        lstm_out = self.dropout2(lstm_out)
+        lstm_out = lstm_out.permute(0, 2, 1)
+        lstm_out = self.batch_norm2(lstm_out)
+        lstm_out = lstm_out.permute(0, 2, 1)
+
+        # LSTM слой 3
+        lstm_out, _ = self.lstm3(lstm_out)
+        # Взимаме само последния output
+        lstm_out = lstm_out[:, -1, :]
+        lstm_out = self.dropout3(lstm_out)
+        lstm_out = self.batch_norm3(lstm_out)
+
+        # Dense слоеве
+        out = self.fc1(lstm_out)
+        out = self.relu(out)
+        out = self.dropout4(out)
+        out = self.fc2(out)
+
+        return out
 
 
 class StockPredictionModel:
@@ -52,7 +114,8 @@ class StockPredictionModel:
         self.sequence_length = sequence_length
         self.n_features = n_features
         self.model = None
-        self.history = None
+        self.history = {'train_loss': [], 'val_loss': []}
+        self.device = device
 
     def build_lstm_model(self, lstm_units=[128, 64, 32], dropout_rate=0.2):
         """
@@ -72,64 +135,31 @@ class StockPredictionModel:
 
         Връща:
         -------
-        keras.Model
+        PyTorch Model
             Компилиран LSTM модел
         """
         print("🏗️ Създаване на LSTM модел...")
 
-        model = Sequential(name='Stock_LSTM_Model')
+        self.model = LSTMModel(
+            n_features=self.n_features,
+            sequence_length=self.sequence_length,
+            lstm_units=lstm_units,
+            dropout_rate=dropout_rate
+        ).to(self.device)
 
-        # Първи LSTM слой (return_sequences=True защото имаме още LSTM слоеве след него)
-        model.add(LSTM(
-            units=lstm_units[0],
-            return_sequences=True,
-            input_shape=(self.sequence_length, self.n_features),
-            name='LSTM_1'
-        ))
-        model.add(Dropout(dropout_rate, name='Dropout_1'))
-        model.add(BatchNormalization(name='BatchNorm_1'))
-
-        # Втори LSTM слой
-        model.add(LSTM(
-            units=lstm_units[1],
-            return_sequences=True,
-            name='LSTM_2'
-        ))
-        model.add(Dropout(dropout_rate, name='Dropout_2'))
-        model.add(BatchNormalization(name='BatchNorm_2'))
-
-        # Трети LSTM слой (return_sequences=False защото е последният LSTM)
-        model.add(LSTM(
-            units=lstm_units[2],
-            return_sequences=False,
-            name='LSTM_3'
-        ))
-        model.add(Dropout(dropout_rate, name='Dropout_3'))
-        model.add(BatchNormalization(name='BatchNorm_3'))
-
-        # Dense слоеве за финалното предсказание
-        model.add(Dense(units=25, activation='relu', name='Dense_1'))
-        model.add(Dropout(dropout_rate / 2, name='Dropout_4'))
-
-        # Изходен слой (1 неврон = 1 предсказание)
-        model.add(Dense(units=1, activation='linear', name='Output'))
-
-        # Компилиране на модела
-        # Adam optimizer: адаптивен learning rate
-        # MSE loss: mean squared error за регресия
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
-            loss='mean_squared_error',
-            metrics=['mae']  # mean absolute error
-        )
-
-        self.model = model
+        # Optimizer и loss function
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+        self.criterion = nn.MSELoss()
 
         print("✅ Модел създаден успешно!")
         print("\n📊 Архитектура на модела:")
-        model.summary()
+        print(self.model)
 
-        return model
+        # Брой параметри
+        total_params = sum(p.numel() for p in self.model.parameters())
+        print(f"\n💾 Общо параметри: {total_params:,}")
+
+        return self.model
 
     def train_model(self, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
         """
@@ -152,7 +182,7 @@ class StockPredictionModel:
 
         Връща:
         -------
-        keras.History
+        dict
             История на обучението
         """
         if self.model is None:
@@ -162,51 +192,83 @@ class StockPredictionModel:
         print(f"📊 Тренировъчни данни: {X_train.shape}")
         print(f"📊 Валидационни данни: {X_val.shape}")
         print(f"⚙️ Epochs: {epochs}, Batch size: {batch_size}")
+        print(f"🖥️ Устройство: {self.device}")
 
-        # Callbacks за оптимизация на обучението
+        # Конвертиране в PyTorch tensors
+        X_train_tensor = torch.FloatTensor(X_train).to(self.device)
+        y_train_tensor = torch.FloatTensor(y_train).reshape(-1, 1).to(self.device)
+        X_val_tensor = torch.FloatTensor(X_val).to(self.device)
+        y_val_tensor = torch.FloatTensor(y_val).reshape(-1, 1).to(self.device)
 
-        # EarlyStopping: спира обучението ако няма подобрение
-        early_stop = EarlyStopping(
-            monitor='val_loss',  # следи validation loss
-            patience=15,  # изчаква 15 епохи без подобрение
-            restore_best_weights=True,  # връща най-добрите тегла
-            verbose=1
-        )
+        # DataLoaders
+        train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-        # ModelCheckpoint: записва най-добрия модел
+        # Early stopping параметри
+        best_val_loss = float('inf')
+        patience = 15
+        patience_counter = 0
+
+        # Model checkpoint path
         models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
         os.makedirs(models_dir, exist_ok=True)
-        checkpoint_path = os.path.join(models_dir, 'best_model.keras')
+        checkpoint_path = os.path.join(models_dir, 'best_model.pt')
 
-        checkpoint = ModelCheckpoint(
-            checkpoint_path,
-            monitor='val_loss',
-            save_best_only=True,
-            verbose=1
-        )
-
-        # ReduceLROnPlateau: намалява learning rate при plateau
-        reduce_lr = ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=0.5,  # намалява LR с 50%
-            patience=7,
-            min_lr=0.00001,
-            verbose=1
-        )
-
-        # Тренировка
         print("\n🎯 Започва обучението...\n")
 
-        self.history = self.model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=epochs,
-            batch_size=batch_size,
-            callbacks=[early_stop, checkpoint, reduce_lr],
-            verbose=1
-        )
+        # Тренировъчен loop
+        for epoch in range(epochs):
+            # Training phase
+            self.model.train()
+            train_loss = 0
+
+            for batch_X, batch_y in train_loader:
+                # Forward pass
+                outputs = self.model(batch_X)
+                loss = self.criterion(outputs, batch_y)
+
+                # Backward pass
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+                train_loss += loss.item()
+
+            train_loss /= len(train_loader)
+
+            # Validation phase
+            self.model.eval()
+            with torch.no_grad():
+                val_outputs = self.model(X_val_tensor)
+                val_loss = self.criterion(val_outputs, y_val_tensor).item()
+
+            # Запазване на историята
+            self.history['train_loss'].append(train_loss)
+            self.history['val_loss'].append(val_loss)
+
+            # Print progress
+            if (epoch + 1) % 10 == 0:
+                print(f"Epoch [{epoch+1}/{epochs}] - "
+                      f"Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
+
+            # Early stopping
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                patience_counter = 0
+                # Запазване на най-добрия модел
+                torch.save(self.model.state_dict(), checkpoint_path)
+            else:
+                patience_counter += 1
+
+            if patience_counter >= patience:
+                print(f"\n⚠️ Early stopping triggered на epoch {epoch+1}")
+                print(f"   Няма подобрение след {patience} епохи")
+                # Зареждане на най-добрия модел
+                self.model.load_state_dict(torch.load(checkpoint_path))
+                break
 
         print("\n✅ Обучението завърши успешно!")
+        print(f"📊 Най-добър validation loss: {best_val_loss:.6f}")
 
         return self.history
 
@@ -227,8 +289,11 @@ class StockPredictionModel:
         if self.model is None:
             raise ValueError("❌ Моделът не е създаден или зареден!")
 
-        predictions = self.model.predict(X, verbose=0)
-        return predictions
+        self.model.eval()
+        with torch.no_grad():
+            X_tensor = torch.FloatTensor(X).to(self.device)
+            predictions = self.model(X_tensor)
+            return predictions.cpu().numpy()
 
     def evaluate(self, X_test, y_test):
         """
@@ -257,11 +322,9 @@ class StockPredictionModel:
         rmse = np.sqrt(mse)
 
         # MAPE (Mean Absolute Percentage Error)
-        # Колко процента грешим средно
         mape = np.mean(np.abs((y_test - y_pred.flatten()) / y_test)) * 100
 
         # Точност на посоката (нагоре/надолу)
-        # Създаваме classification от regression predictions
         direction_pred = (y_pred.flatten() > 0.5).astype(int)
         direction_true = (y_test > 0.5).astype(int)
         direction_accuracy = accuracy_score(direction_true, direction_pred) * 100
@@ -298,9 +361,9 @@ class StockPredictionModel:
         models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
         os.makedirs(models_dir, exist_ok=True)
 
-        # Записване на модела
-        model_path = os.path.join(models_dir, f'{model_name}.keras')
-        self.model.save(model_path)
+        # Записване на модела (PyTorch format)
+        model_path = os.path.join(models_dir, f'{model_name}.pt')
+        torch.save(self.model.state_dict(), model_path)
         print(f"💾 Модел записан: {model_path}")
 
         # Записване на конфигурацията
@@ -316,13 +379,10 @@ class StockPredictionModel:
         print(f"📄 Конфигурация записана: {config_path}")
 
         # Записване на историята на обучението
-        if self.history is not None:
+        if self.history:
             history_path = os.path.join(models_dir, f'{model_name}_history.json')
-            history_dict = {key: [float(val) for val in values]
-                          for key, values in self.history.history.items()}
-
             with open(history_path, 'w') as f:
-                json.dump(history_dict, f, indent=4)
+                json.dump(self.history, f, indent=4)
             print(f"📊 История записана: {history_path}")
 
     def load_model(self, model_name='stock_lstm_model'):
@@ -347,12 +407,15 @@ class StockPredictionModel:
         self.sequence_length = config['sequence_length']
         self.n_features = config['n_features']
 
-        # Зареждане на модела
-        model_path = os.path.join(models_dir, f'{model_name}.keras')
+        # Създаване и зареждане на модела
+        self.build_lstm_model()
+
+        model_path = os.path.join(models_dir, f'{model_name}.pt')
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"❌ Моделът не е намерен: {model_path}")
 
-        self.model = keras.models.load_model(model_path)
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.model.eval()
         print(f"✅ Модел зареден: {model_path}")
 
         return self.model
@@ -368,12 +431,12 @@ if __name__ == "__main__":
     n_samples = 1000
 
     # Генериране на random данни
-    X_train = np.random.rand(n_samples, sequence_length, n_features)
-    y_train = np.random.rand(n_samples)
-    X_val = np.random.rand(200, sequence_length, n_features)
-    y_val = np.random.rand(200)
-    X_test = np.random.rand(100, sequence_length, n_features)
-    y_test = np.random.rand(100)
+    X_train = np.random.rand(n_samples, sequence_length, n_features).astype(np.float32)
+    y_train = np.random.rand(n_samples).astype(np.float32)
+    X_val = np.random.rand(200, sequence_length, n_features).astype(np.float32)
+    y_val = np.random.rand(200).astype(np.float32)
+    X_test = np.random.rand(100, sequence_length, n_features).astype(np.float32)
+    y_test = np.random.rand(100).astype(np.float32)
 
     # Създаване и обучение на модел
     model = StockPredictionModel(sequence_length=sequence_length, n_features=n_features)

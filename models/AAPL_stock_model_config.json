@@ -1,0 +1,5 @@
+{
+    "sequence_length": 60,
+    "n_features": 22,
+    "model_name": "AAPL_stock_model"
+}
