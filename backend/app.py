@@ -33,6 +33,8 @@ from model import StockPredictionModel
 from backtest import StockBacktester
 from export import generate_report, export_to_csv, export_to_json
 from portfolio import PortfolioTracker
+from sentiment import get_news_sentiment
+from combined_signal import combine_signals
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -253,6 +255,131 @@ def predict_stock(ticker: str, period: str = "2y"):
             "prediction": float(predicted_value),
             "signal": signal,
             "confidence": float(confidence),
+            "timestamp": datetime.now().isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/stocks/{ticker}/combined")
+def get_combined_signal(ticker: str, period: str = "2y"):
+    """
+    Финален сигнал: ML + Technical Indicators + News Sentiment.
+    Връща breakdown на всички източници и комбиниран резултат.
+    """
+    try:
+        # === 1. ML SIGNAL ===
+        collector = StockDataCollector(ticker=ticker, period=period, interval="1d")
+        data = collector.fetch_stock_data(save_to_csv=False)
+
+        if data is None or len(data) == 0:
+            raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+        preprocessor = StockDataPreprocessor(data)
+        preprocessor.calculate_technical_indicators()
+        preprocessor.create_target_variable(days_ahead=1)
+        preprocessor.normalize_data()
+
+        scaled_data = preprocessor.scaled_data
+        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
+        model_data = scaled_data[feature_cols].values
+
+        ml_prediction = 0.5
+        ml_signal = 'HOLD'
+        model_metrics = {}
+
+        if len(model_data) >= 60:
+            X, y = preprocessor.create_sequences(model_data, seq_length=60)
+            split_idx = int(len(X) * 0.9)
+            X_train, X_val = X[:split_idx], X[split_idx:]
+            y_train, y_val = y[:split_idx], y[split_idx:]
+
+            model = StockPredictionModel(sequence_length=60, n_features=X.shape[2])
+            model_name = f'{ticker.upper()}_stock_model'
+
+            try:
+                model.load_model(model_name)
+            except:
+                model.build_lstm_model()
+                model.train_model(X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
+                model.save_model(model_name)
+
+            latest_data = model_data[-60:].reshape(1, 60, -1)
+            ml_prediction = float(model.predict(latest_data)[0][0])
+            model_metrics = model.evaluate(X_val, y_val)
+
+            if ml_prediction > 0.55:
+                ml_signal = 'BUY'
+            elif ml_prediction < 0.45:
+                ml_signal = 'SELL'
+            else:
+                ml_signal = 'HOLD'
+
+        # === 2. TECHNICAL SIGNAL ===
+        df = preprocessor.data
+        latest_rsi = df['RSI'].iloc[-1]
+        latest_macd = df['MACD'].iloc[-1]
+        latest_macd_signal = df['MACD_Signal'].iloc[-1]
+        latest_close = df['Close'].iloc[-1]
+
+        buy_signals = 0
+        sell_signals = 0
+
+        # RSI
+        if latest_rsi < 30: buy_signals += 1
+        elif latest_rsi > 70: sell_signals += 1
+
+        # MACD
+        if latest_macd > latest_macd_signal: buy_signals += 1
+        else: sell_signals += 1
+
+        # Bollinger
+        bb_upper = df['BB_Upper'].iloc[-1]
+        bb_lower = df['BB_Lower'].iloc[-1]
+        if latest_close < bb_lower: buy_signals += 1
+        elif latest_close > bb_upper: sell_signals += 1
+
+        # Stochastic
+        stoch_k = df['Stoch_K'].iloc[-1]
+        if stoch_k < 20: buy_signals += 1
+        elif stoch_k > 80: sell_signals += 1
+
+        # Williams %R
+        wr = df['Williams_R'].iloc[-1]
+        if wr < -80: buy_signals += 1
+        elif wr > -20: sell_signals += 1
+
+        if buy_signals >= 3:
+            technical_signal = 'STRONG BUY'
+        elif buy_signals >= 2:
+            technical_signal = 'BUY'
+        elif sell_signals >= 3:
+            technical_signal = 'STRONG SELL'
+        elif sell_signals >= 2:
+            technical_signal = 'SELL'
+        else:
+            technical_signal = 'NEUTRAL'
+
+        # === 3. NEWS SENTIMENT ===
+        company_info = collector.get_company_info()
+        company_name = company_info.get('name', '') if company_info else ''
+        sentiment_data = get_news_sentiment(ticker, company_name)
+
+        # === 4. COMBINE ALL SIGNALS ===
+        combined = combine_signals(
+            ml_signal=ml_signal,
+            ml_prediction=ml_prediction,
+            technical_signal=technical_signal,
+            sentiment_data=sentiment_data,
+            model_metrics=model_metrics
+        )
+
+        return {
+            "ticker": ticker.upper(),
+            "current_price": float(latest_close),
+            "combined": combined,
             "timestamp": datetime.now().isoformat()
         }
     except HTTPException:

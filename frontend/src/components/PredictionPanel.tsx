@@ -4,98 +4,198 @@ interface PredictionPanelProps {
   ticker: string
 }
 
-interface Prediction {
-  ticker: string
-  current_price: number
-  prediction: number
-  signal: string
-  confidence: number
-  timestamp: string
+interface CombinedSignal {
+  final_signal: string
+  final_score: number
+  final_confidence: number
+  agreement: string
+  breakdown: {
+    ml: {
+      signal: string
+      score: number
+      confidence: number
+      weight: number
+      raw_prediction: number
+    }
+    technical: {
+      signal: string
+      score: number
+      confidence: number
+      weight: number
+    }
+    sentiment: {
+      signal: string
+      score: number
+      confidence: number
+      weight: number
+      article_count: number
+      bullish: number
+      bearish: number
+      neutral: number
+    }
+  }
 }
 
 export default function PredictionPanel({ ticker }: PredictionPanelProps) {
-  const [prediction, setPrediction] = useState<Prediction | null>(null)
+  const [data, setData] = useState<CombinedSignal | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { fetchPrediction() }, [ticker])
+  useEffect(() => { fetchCombined() }, [ticker])
 
-  const fetchPrediction = async () => {
+  const fetchCombined = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/stocks/${ticker}/predict`, { method: 'POST' })
-      const data = await res.json()
-      setPrediction(data)
+      const res = await fetch(`/api/stocks/${ticker}/combined`)
+      const json = await res.json()
+      setData(json.combined)
     } catch (err) { console.error(err) }
     setLoading(false)
   }
 
-  const trainModel = async () => {
-    setLoading(true)
-    try {
-      await fetch(`/api/stocks/${ticker}/train`, { method: 'POST' })
-      await fetchPrediction()
-    } catch (err) { console.error(err) }
-    setLoading(false)
+  const getSignalColor = (signal: string) => {
+    const s = signal.toUpperCase()
+    if (s.includes('BUY') || s.includes('BULLISH')) return 'text-up'
+    if (s.includes('SELL') || s.includes('BEARISH')) return 'text-down'
+    return 'text-label-muted'
   }
 
-  const isBuy = prediction?.signal === 'BUY'
+  const getSignalBg = (signal: string) => {
+    const s = signal.toUpperCase()
+    if (s.includes('BUY') || s.includes('BULLISH')) return 'bg-up/10 border-up/20'
+    if (s.includes('SELL') || s.includes('BEARISH')) return 'bg-down/10 border-down/20'
+    return 'bg-surface-3 border-frame'
+  }
+
+  const getScoreBar = (score: number) => {
+    const pct = ((score + 1) / 2) * 100
+    const color = score > 0.1 ? '#22C55E' : score < -0.1 ? '#EF4444' : '#6B7280'
+    return (
+      <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden relative">
+        <div className="absolute inset-0 flex">
+          <div className="w-1/2" />
+          <div className="w-px bg-frame h-full" />
+        </div>
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${Math.abs(pct - 50)}%`,
+            marginLeft: pct >= 50 ? '50%' : `${pct}%`,
+            backgroundColor: color
+          }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="bg-surface-1 border border-frame rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">ML Prediction</span>
-        <button onClick={fetchPrediction} disabled={loading}
+        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">Combined Signal</span>
+        <button onClick={fetchCombined} disabled={loading}
           className="text-xxs text-accent hover:text-accent-hover disabled:text-label-muted">
           {loading ? '...' : 'Refresh'}
         </button>
       </div>
 
-      {prediction ? (
+      {loading ? (
+        <div className="text-label-muted text-xs text-center py-12">Analyzing ML + Technical + News...</div>
+      ) : data ? (
         <div className="space-y-4">
-          {/* Signal */}
-          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded ${
-            isBuy ? 'bg-up/10 text-up' : 'bg-down/10 text-down'
-          }`}>
-            <span className="w-2 h-2 rounded-full bg-current" />
-            <span className="text-sm font-semibold">{prediction.signal}</span>
-          </div>
 
-          {/* Price */}
-          <div>
-            <p className="text-xxs text-label-muted mb-0.5">Current Price</p>
-            <p className="text-xl font-bold tabular-nums text-label">${prediction.current_price.toFixed(2)}</p>
-          </div>
-
-          {/* Confidence */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xxs text-label-muted">Confidence</p>
-              <p className="text-xxs tabular-nums text-label-dim">{prediction.confidence.toFixed(1)}%</p>
-            </div>
-            <div className="h-1 bg-surface-3 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${isBuy ? 'bg-up' : 'bg-down'}`}
-                style={{ width: `${Math.min(prediction.confidence, 100)}%` }}
-              />
+          {/* === FINAL SIGNAL === */}
+          <div className={`text-center py-3 rounded border ${getSignalBg(data.final_signal)}`}>
+            <p className="text-xxs text-label-muted uppercase tracking-wider mb-1">Final Verdict</p>
+            <p className={`text-lg font-bold ${getSignalColor(data.final_signal)}`}>
+              {data.final_signal}
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-1.5">
+              <span className="text-xxs text-label-muted">
+                Confidence: <span className="text-label-dim font-medium">{data.final_confidence.toFixed(0)}%</span>
+              </span>
+              {data.agreement === 'all_agree' && (
+                <span className="text-xxs px-1.5 py-0.5 rounded bg-accent/10 text-accent">All Agree</span>
+              )}
             </div>
           </div>
 
-          {/* Model Output */}
-          <div className="bg-surface-2 rounded p-2.5">
-            <p className="text-xxs text-label-muted mb-0.5">Model Output</p>
-            <p className="text-xs font-mono text-label-dim tabular-nums">{prediction.prediction.toFixed(4)}</p>
+          {/* === BREAKDOWN === */}
+          <div className="space-y-3">
+
+            {/* ML Signal */}
+            <div className="bg-surface-2 rounded p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  <span className="text-xs font-medium text-label">ML Model</span>
+                  <span className="text-xxs text-label-muted">(40% weight)</span>
+                </div>
+                <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.ml.signal)}`}>
+                  {data.breakdown.ml.signal}
+                </span>
+              </div>
+              {getScoreBar(data.breakdown.ml.score)}
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xxs text-label-muted">
+                  Output: {data.breakdown.ml.raw_prediction.toFixed(4)}
+                </span>
+                <span className="text-xxs text-label-muted">
+                  Confidence: {data.breakdown.ml.confidence.toFixed(0)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Technical Signal */}
+            <div className="bg-surface-2 rounded p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-up" />
+                  <span className="text-xs font-medium text-label">Technical Indicators</span>
+                  <span className="text-xxs text-label-muted">(35% weight)</span>
+                </div>
+                <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.technical.signal)}`}>
+                  {data.breakdown.technical.signal}
+                </span>
+              </div>
+              {getScoreBar(data.breakdown.technical.score)}
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xxs text-label-muted">RSI + MACD + BB + Stoch + Williams</span>
+                <span className="text-xxs text-label-muted">
+                  Confidence: {data.breakdown.technical.confidence.toFixed(0)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Sentiment Signal */}
+            <div className="bg-surface-2 rounded p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+                  <span className="text-xs font-medium text-label">News Sentiment</span>
+                  <span className="text-xxs text-label-muted">(25% weight)</span>
+                </div>
+                <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.sentiment.signal)}`}>
+                  {data.breakdown.sentiment.signal}
+                </span>
+              </div>
+              {getScoreBar(data.breakdown.sentiment.score)}
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xxs text-label-muted">
+                  {data.breakdown.sentiment.article_count} articles
+                  {data.breakdown.sentiment.article_count > 0 && (
+                    <> — <span className="text-up">{data.breakdown.sentiment.bullish}↑</span> <span className="text-down">{data.breakdown.sentiment.bearish}↓</span> <span className="text-label-muted">{data.breakdown.sentiment.neutral}—</span></>
+                  )}
+                </span>
+                <span className="text-xxs text-label-muted">
+                  Confidence: {data.breakdown.sentiment.confidence.toFixed(0)}%
+                </span>
+              </div>
+            </div>
           </div>
+
         </div>
       ) : (
-        <div className="text-label-muted text-xs text-center py-8">
-          {loading ? 'Analyzing...' : 'No prediction'}
-        </div>
+        <div className="text-label-muted text-xs text-center py-12">No data</div>
       )}
-
-      <button onClick={trainModel} disabled={loading}
-        className="w-full mt-4 py-2 bg-surface-3 hover:bg-surface-4 border border-frame rounded text-xs font-medium text-label-dim hover:text-label transition-colors disabled:opacity-50">
-        {loading ? 'Training...' : 'Retrain Model'}
-      </button>
     </div>
   )
 }
