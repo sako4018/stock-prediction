@@ -34,9 +34,33 @@ else:
     device = torch.device('cpu')
 
 
+class AttentionLayer(nn.Module):
+    """
+    Attention mechanism за LSTM.
+    Позволява на модела да се фокусира върху най-важните time steps.
+    """
+
+    def __init__(self, hidden_size):
+        super(AttentionLayer, self).__init__()
+        self.attention = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.Tanh(),
+            nn.Linear(hidden_size, 1)
+        )
+
+    def forward(self, lstm_output):
+        # lstm_output: (batch, seq_len, hidden_size)
+        attention_weights = self.attention(lstm_output)  # (batch, seq_len, 1)
+        attention_weights = torch.softmax(attention_weights, dim=1)
+
+        # Weighted sum
+        context = torch.sum(attention_weights * lstm_output, dim=1)  # (batch, hidden_size)
+        return context, attention_weights
+
+
 class LSTMModel(nn.Module):
     """
-    PyTorch LSTM архитектура за stock prediction.
+    PyTorch LSTM с Attention Mechanism за stock prediction.
     """
 
     def __init__(self, n_features, sequence_length, lstm_units=[128, 64, 32], dropout_rate=0.2):
@@ -58,19 +82,23 @@ class LSTMModel(nn.Module):
         self.dropout3 = nn.Dropout(dropout_rate)
         self.batch_norm3 = nn.BatchNorm1d(lstm_units[2])
 
+        # Attention mechanism
+        self.attention = AttentionLayer(lstm_units[2])
+
         # Dense слоеве
-        self.fc1 = nn.Linear(lstm_units[2], 25)
+        self.fc1 = nn.Linear(lstm_units[2], 64)
         self.relu = nn.ReLU()
         self.dropout4 = nn.Dropout(dropout_rate / 2)
+        self.fc2 = nn.Linear(64, 25)
+        self.dropout5 = nn.Dropout(dropout_rate / 2)
 
         # Изход
-        self.fc2 = nn.Linear(25, 1)
+        self.fc3 = nn.Linear(25, 1)
 
     def forward(self, x):
         # LSTM слой 1
         lstm_out, _ = self.lstm1(x)
         lstm_out = self.dropout1(lstm_out)
-        # BatchNorm очаква (batch, features, sequence)
         lstm_out = lstm_out.permute(0, 2, 1)
         lstm_out = self.batch_norm1(lstm_out)
         lstm_out = lstm_out.permute(0, 2, 1)
@@ -84,16 +112,21 @@ class LSTMModel(nn.Module):
 
         # LSTM слой 3
         lstm_out, _ = self.lstm3(lstm_out)
-        # Взимаме само последния output
-        lstm_out = lstm_out[:, -1, :]
         lstm_out = self.dropout3(lstm_out)
+        lstm_out = lstm_out.permute(0, 2, 1)
         lstm_out = self.batch_norm3(lstm_out)
+        lstm_out = lstm_out.permute(0, 2, 1)
+
+        # Attention mechanism
+        context, attention_weights = self.attention(lstm_out)
 
         # Dense слоеве
-        out = self.fc1(lstm_out)
+        out = self.fc1(context)
         out = self.relu(out)
         out = self.dropout4(out)
         out = self.fc2(out)
+        out = self.dropout5(out)
+        out = self.fc3(out)
 
         return out
 
