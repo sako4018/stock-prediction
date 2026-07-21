@@ -11,6 +11,7 @@ import FundamentalsPanel from './components/FundamentalsPanel'
 import MultiTimeframePanel from './components/MultiTimeframePanel'
 import AlertsPanel from './components/AlertsPanel'
 import TickerTape from './components/TickerTape'
+import PortfolioOptimizer from './components/PortfolioOptimizer'
 
 const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
 
@@ -137,6 +138,7 @@ function PortfolioView() {
 
   return (
     <div className="space-y-4">
+      <PortfolioOptimizer />
       <div className="bg-surface-alt border border-line rounded-lg p-5">
         <h3 className="text-xs font-semibold text-txt-muted uppercase tracking-wider mb-4">Portfolio Overview</h3>
         {portfolio ? (
