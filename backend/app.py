@@ -40,6 +40,7 @@ from sector_analysis import sector_correlation_matrix, get_sector_summary, find_
 from alerts import AlertManager
 from batch_train import BatchTrainer
 from performance import PerformanceTracker
+from fundamentals import get_fundamentals, get_valuation_comparison
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -984,6 +985,26 @@ def get_accuracy_trend(ticker: str, window: int = 10):
     """Точността във времето."""
     try:
         return {"trend": perf_tracker.get_accuracy_trend(ticker, window)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== FUNDAMENTALS ====================
+
+@app.get("/api/stocks/{ticker}/fundamentals")
+def get_fundamentals_data(ticker: str):
+    """Фундаментални данни за компанията."""
+    try:
+        return get_fundamentals(ticker)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/stocks/compare")
+def compare_valuation(tickers: list):
+    """Сравнение на valuation между компании."""
+    try:
+        return get_valuation_comparison(tickers)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
