@@ -120,10 +120,60 @@ class StockDataPreprocessor:
         df['Stoch_D'] = df['Stoch_K'].rolling(window=3).mean()
 
         # 12. Williams %R
-        # Подобен на Stochastic, но в обратен ред
-        # %R = (High_14 - Close) / (High_14 - Low_14) * -100
-        # > -20 = overbought, < -80 = oversold
         df['Williams_R'] = ((high_14 - df['Close']) / (high_14 - low_14)) * -100
+
+        # 13. OBV (On-Balance Volume)
+        # Натрупване на обем base на посоката на цената
+        df['OBV'] = (np.sign(df['Close'].diff()) * df['Volume']).fillna(0).cumsum()
+
+        # 14. VWAP (Volume Weighted Average Price) - approximation
+        df['VWAP'] = (df['Volume'] * (df['High'] + df['Low'] + df['Close']) / 3).cumsum() / df['Volume'].cumsum()
+
+        # 15. MFI (Money Flow Index) - RSI с обем
+        typical_price = (df['High'] + df['Low'] + df['Close']) / 3
+        money_flow = typical_price * df['Volume']
+        positive_flow = money_flow.where(typical_price > typical_price.shift(), 0).rolling(14).sum()
+        negative_flow = money_flow.where(typical_price < typical_price.shift(), 0).rolling(14).sum()
+        mfi_ratio = positive_flow / negative_flow
+        df['MFI'] = 100 - (100 / (1 + mfi_ratio))
+
+        # 16. CCI (Commodity Channel Index)
+        tp_sma = typical_price.rolling(20).mean()
+        tp_mad = typical_price.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean())
+        df['CCI'] = (typical_price - tp_sma) / (0.015 * tp_mad)
+
+        # 17. ADX (Average Directional Index) - сила на тренда
+        plus_dm = df['High'].diff()
+        minus_dm = -df['Low'].diff()
+        plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0)
+        minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0)
+        atr14 = true_range.rolling(14).mean()
+        plus_di = 100 * (plus_dm.rolling(14).mean() / atr14)
+        minus_di = 100 * (minus_dm.rolling(14).mean() / atr14)
+        dx = 100 * ((plus_di - minus_di).abs() / (plus_di + minus_di))
+        df['ADX'] = dx.rolling(14).mean()
+
+        # 18. Price Patterns
+        # Higher High / Lower Low
+        df['Higher_High'] = (df['High'] > df['High'].shift(1)).astype(int)
+        df['Lower_Low'] = (df['Low'] < df['Low'].shift(1)).astype(int)
+        df['Higher_Low'] = (df['Low'] > df['Low'].shift(1)).astype(int)
+        df['Lower_High'] = (df['High'] < df['High'].shift(1)).astype(int)
+
+        # 19. Volatility Ratios
+        df['Volatility_Ratio'] = df['ATR'] / df['Close'] * 100
+        df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Middle']
+
+        # 20. Momentum Divergence
+        # RSI divergence from price
+        df['RSI_Divergence'] = df['Close'].pct_change(5) - df['RSI'].pct_change(5)
+
+        # 21. Rate of Change (ROC)
+        for period in [5, 10, 20]:
+            df[f'ROC_{period}'] = df['Close'].pct_change(period) * 100
+
+        # 22. Exponential weighted moving stats
+        df['EWMA_Volatility'] = df['Price_Change'].ewm(span=20).std() * np.sqrt(252)
 
         # Премахване на редове с NaN стойности (от изчисленията)
         df = df.dropna()
