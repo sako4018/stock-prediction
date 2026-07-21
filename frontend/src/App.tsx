@@ -9,6 +9,7 @@ import StockChart from './components/StockChart'
 import CompanyInfo from './components/CompanyInfo'
 import FundamentalsPanel from './components/FundamentalsPanel'
 import MultiTimeframePanel from './components/MultiTimeframePanel'
+import AlertsPanel from './components/AlertsPanel'
 
 function AppContent() {
   const [ticker, setTicker] = useState<string>('AAPL')
@@ -39,8 +40,9 @@ function AppContent() {
             <div className="xl:col-span-2">
               <StockChart ticker={ticker} />
             </div>
-            <div>
+            <div className="space-y-4">
               <SignalsPanel ticker={ticker} />
+              <AlertsPanel ticker={ticker} />
             </div>
           </div>
         )
