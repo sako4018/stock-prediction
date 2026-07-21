@@ -12,6 +12,7 @@ import MultiTimeframePanel from './components/MultiTimeframePanel'
 import AlertsPanel from './components/AlertsPanel'
 import TickerTape from './components/TickerTape'
 import PortfolioOptimizer from './components/PortfolioOptimizer'
+import BatchTrainPanel from './components/BatchTrainPanel'
 
 const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
 
@@ -53,13 +54,16 @@ function AppContent() {
         return <Dashboard ticker={ticker} />
       case 'predict':
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <div className="xl:col-span-2">
-              <StockChart ticker={ticker} />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              <div className="xl:col-span-2">
+                <StockChart ticker={ticker} />
+              </div>
+              <div>
+                <PredictionPanel ticker={ticker} />
+              </div>
             </div>
-            <div>
-              <PredictionPanel ticker={ticker} />
-            </div>
+            <BatchTrainPanel />
           </div>
         )
       case 'backtest':
