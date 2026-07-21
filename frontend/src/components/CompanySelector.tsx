@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { POPULAR_STOCKS, SECTORS, searchCompanies, Company } from '../data/companies'
+import { POPULAR_STOCKS, SECTORS, searchCompanies } from '../data/companies'
 
 interface CompanySelectorProps {
   onSelect: (ticker: string) => void
