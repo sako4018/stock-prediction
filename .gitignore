@@ -1,0 +1,67 @@
+# .gitignore за Stock Prediction проект
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Data files
+data/*.csv
+data/*.json
+!data/.gitkeep
+
+# Model files (големи файлове)
+models/*.keras
+models/*.h5
+models/*.pkl
+models/*.joblib
+!models/.gitkeep
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+
+# Visualizations
+*.png
+*.jpg
+*.jpeg
+!static/images/.gitkeep
+
+# Temporary files
+tmp/
+temp/
