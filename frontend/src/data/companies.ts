@@ -92,15 +92,55 @@ export const POPULAR_STOCKS: Company[] = [
   { ticker: 'SQ', name: 'Block Inc.', sector: 'Finance', country: 'USA', marketCap: '$40B' },
   { ticker: 'SHOP', name: 'Shopify', sector: 'Technology', country: 'Canada', marketCap: '$100B' },
   { ticker: 'SE', name: 'Sea Limited', sector: 'Technology', country: 'Singapore', marketCap: '$40B' },
+
+  // Crypto ETFs
+  { ticker: 'IBIT', name: 'iShares Bitcoin Trust', sector: 'Crypto ETF', country: 'USA', marketCap: '$50B' },
+  { ticker: 'BITO', name: 'ProShares Bitcoin Strategy', sector: 'Crypto ETF', country: 'USA', marketCap: '$2B' },
+  { ticker: 'COIN', name: 'Coinbase Global', sector: 'Crypto ETF', country: 'USA', marketCap: '$50B' },
+  { ticker: 'MSTR', name: 'MicroStrategy', sector: 'Crypto ETF', country: 'USA', marketCap: '$30B' },
+  { ticker: 'MARA', name: 'Marathon Digital', sector: 'Crypto ETF', country: 'USA', marketCap: '$5B' },
+  { ticker: 'RIOT', name: 'Riot Platforms', sector: 'Crypto ETF', country: 'USA', marketCap: '$3B' },
+
+  // REITs
+  { ticker: 'PLD', name: 'Prologis', sector: 'REITs', country: 'USA', marketCap: '$120B' },
+  { ticker: 'AMT', name: 'American Tower', sector: 'REITs', country: 'USA', marketCap: '$100B' },
+  { ticker: 'EQIX', name: 'Equinix', sector: 'REITs', country: 'USA', marketCap: '$80B' },
+  { ticker: 'SPG', name: 'Simon Property', sector: 'REITs', country: 'USA', marketCap: '$50B' },
+
+  // Defense
+  { ticker: 'LMT', name: 'Lockheed Martin', sector: 'Defense', country: 'USA', marketCap: '$120B' },
+  { ticker: 'RTX', name: 'RTX Corp.', sector: 'Defense', country: 'USA', marketCap: '$140B' },
+  { ticker: 'NOC', name: 'Northrop Grumman', sector: 'Defense', country: 'USA', marketCap: '$80B' },
+  { ticker: 'GD', name: 'General Dynamics', sector: 'Defense', country: 'USA', marketCap: '$75B' },
+  { ticker: 'LHX', name: 'L3Harris Tech', sector: 'Defense', country: 'USA', marketCap: '$45B' },
+
+  // More Healthcare
+  { ticker: 'AMGN', name: 'Amgen Inc.', sector: 'Healthcare', country: 'USA', marketCap: '$150B' },
+  { ticker: 'GILD', name: 'Gilead Sciences', sector: 'Healthcare', country: 'USA', marketCap: '$100B' },
+  { ticker: 'ISRG', name: 'Intuitive Surgical', sector: 'Healthcare', country: 'USA', marketCap: '$150B' },
+  { ticker: 'REGN', name: 'Regeneron', sector: 'Healthcare', country: 'USA', marketCap: '$100B' },
 ]
 
-export const SECTORS = ['All', 'Technology', 'Finance', 'Healthcare', 'Consumer', 'Energy', 'Industrial', 'Automotive']
+export const SECTORS = ['All', 'Technology', 'Finance', 'Healthcare', 'Consumer', 'Energy', 'Industrial', 'Automotive', 'Crypto ETF', 'REITs', 'Defense']
 
 export function searchCompanies(query: string): Company[] {
   const q = query.toLowerCase()
-  return POPULAR_STOCKS.filter(
+  const results = POPULAR_STOCKS.filter(
     c => c.ticker.toLowerCase().includes(q) ||
          c.name.toLowerCase().includes(q) ||
          c.sector.toLowerCase().includes(q)
   )
+
+  // If query looks like a valid ticker (1-5 uppercase letters) and not found in list, offer it
+  if (results.length === 0 && /^[A-Za-z]{1,5}$/.test(query.trim())) {
+    results.push({
+      ticker: query.toUpperCase(),
+      name: 'Search on Yahoo Finance',
+      sector: 'Custom',
+      country: 'Global',
+      marketCap: ''
+    })
+  }
+
+  return results
 }
