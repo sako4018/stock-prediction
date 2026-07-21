@@ -173,9 +173,11 @@ def get_stock_info(ticker: str):
 def get_stock_history(ticker: str, period: str = "1y", interval: str = "1d"):
     """Исторически данни с технически индикатори."""
     try:
-        # За кратки периоди използваме по-чест interval за повече данни
-        if period in ('1mo', '3mo') and interval == '1d':
-            interval = '1d'  # Keep daily but handle indicators gracefully
+        # За кратки периоди използваме hourly за повече data points
+        if period == '1mo' and interval == '1d':
+            interval = '1h'
+        elif period == '3mo' and interval == '1d':
+            interval = '1d'  # 3mo with daily is fine (~63 points)
 
         collector = StockDataCollector(ticker=ticker, period=period, interval=interval)
         data = collector.fetch_stock_data(save_to_csv=False)
