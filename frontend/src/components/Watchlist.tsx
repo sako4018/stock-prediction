@@ -24,6 +24,8 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
   useEffect(() => {
     localStorage.setItem('watchlist', JSON.stringify(watchlist))
     fetchPrices()
+    const interval = setInterval(fetchPrices, 30000)
+    return () => clearInterval(interval)
   }, [watchlist])
 
   const fetchPrices = async () => {

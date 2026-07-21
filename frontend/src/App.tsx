@@ -79,7 +79,7 @@ function AppContent() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot" />
-              <span className="text-xxs text-txt-muted">Market Data</span>
+              <span className="text-xxs text-txt-dim">Live • 30s</span>
             </div>
             <button
               onClick={toggleTheme}

@@ -31,6 +31,8 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
     setData(null)
     setLoading(true)
     fetchInfo()
+    const interval = setInterval(fetchInfo, 30000)
+    return () => clearInterval(interval)
   }, [ticker])
 
   const fetchInfo = async () => {
