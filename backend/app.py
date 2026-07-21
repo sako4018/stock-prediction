@@ -19,9 +19,10 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import asyncio
 
 # Добавяне на src директорията в path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -66,6 +67,77 @@ class PredictResponse(BaseModel):
 @app.get("/")
 def root():
     return {"message": "Stock Prediction API", "version": "1.0.0"}
+
+
+# ==================== WEBSOCKET FOR LIVE PRICES ====================
+
+class ConnectionManager:
+    """Мениджър за WebSocket връзки."""
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        await websocket.send_json(message)
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws/prices")
+async def websocket_prices(websocket: WebSocket):
+    """
+    WebSocket за реални цени на акции.
+    Клиентът изпраща ticker, сървърът връща актуална цена на всеки 10 секунди.
+    """
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Получаване на ticker от клиента
+            data = await websocket.receive_text()
+            ticker = data.upper()
+
+            # Изпращане на актуална цена на всеки 10 секунди
+            while True:
+                try:
+                    collector = StockDataCollector(ticker=ticker, period="1d", interval="1d")
+                    price_info = collector.get_real_time_price()
+
+                    if price_info:
+                        await websocket.send_json({
+                            "type": "price_update",
+                            "ticker": ticker,
+                            "price": price_info['current_price'],
+                            "change": price_info['change'],
+                            "change_percent": price_info['change_percent'],
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    else:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": f"No data for {ticker}"
+                        })
+
+                    # Чакане 10 секунди преди следващата актуализация
+                    await asyncio.sleep(10)
+
+                except WebSocketDisconnect:
+                    manager.disconnect(websocket)
+                    return
+                except Exception as e:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": str(e)
+                    })
+                    await asyncio.sleep(5)
+
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 
 @app.get("/api/stocks/{ticker}")
