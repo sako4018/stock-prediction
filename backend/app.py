@@ -31,6 +31,7 @@ from preprocessing import StockDataPreprocessor
 from model import StockPredictionModel
 from backtest import StockBacktester
 from export import generate_report, export_to_csv, export_to_json
+from portfolio import PortfolioTracker
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -517,6 +518,61 @@ def export_report(ticker: str, format: str = "json"):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PORTFOLIO ENDPOINTS ====================
+
+class PositionRequest(BaseModel):
+    shares: float
+    price: float
+
+portfolio = PortfolioTracker(initial_capital=100000)
+
+
+@app.get("/api/portfolio")
+def get_portfolio():
+    """Обобщение на портфолиото."""
+    try:
+        return portfolio.get_portfolio_summary()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/portfolio/buy/{ticker}")
+def buy_stock(ticker: str, request: PositionRequest):
+    """Купува акции."""
+    try:
+        result = portfolio.add_position(ticker, request.shares, request.price)
+        if 'error' in result:
+            raise HTTPException(status_code=400, detail=result['error'])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/portfolio/sell/{ticker}")
+def sell_stock(ticker: str, request: PositionRequest):
+    """Продава акции."""
+    try:
+        result = portfolio.remove_position(ticker, request.shares, request.price)
+        if 'error' in result:
+            raise HTTPException(status_code=400, detail=result['error'])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/portfolio/history")
+def get_portfolio_history(limit: int = 50):
+    """История на транзакциите."""
+    try:
+        return {"history": portfolio.get_history(limit)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
