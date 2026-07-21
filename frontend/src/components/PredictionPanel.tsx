@@ -56,21 +56,21 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
     const s = signal.toUpperCase()
     if (s.includes('BUY') || s.includes('BULLISH')) return 'text-up'
     if (s.includes('SELL') || s.includes('BEARISH')) return 'text-down'
-    return 'text-label-muted'
+    return 'text-txt-muted'
   }
 
   const getSignalBg = (signal: string) => {
     const s = signal.toUpperCase()
     if (s.includes('BUY') || s.includes('BULLISH')) return 'bg-up/10 border-up/20'
     if (s.includes('SELL') || s.includes('BEARISH')) return 'bg-down/10 border-down/20'
-    return 'bg-surface-3 border-frame'
+    return 'bg-overlay border-line'
   }
 
   const getScoreBar = (score: number) => {
     const pct = ((score + 1) / 2) * 100
     const color = score > 0.1 ? '#22C55E' : score < -0.1 ? '#EF4444' : '#6B7280'
     return (
-      <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden relative">
+      <div className="h-1.5 bg-overlay rounded-full overflow-hidden relative">
         <div className="absolute inset-0 flex">
           <div className="w-1/2" />
           <div className="w-px bg-frame h-full" />
@@ -88,29 +88,29 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
   }
 
   return (
-    <div className="bg-surface-1 border border-frame rounded-lg p-4">
+    <div className="bg-alt border border-line rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">Combined Signal</span>
+        <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Combined Signal</span>
         <button onClick={fetchCombined} disabled={loading}
-          className="text-xxs text-accent hover:text-accent-hover disabled:text-label-muted">
+          className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-muted">
           {loading ? '...' : 'Refresh'}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-label-muted text-xs text-center py-12">Analyzing ML + Technical + News...</div>
+        <div className="text-txt-muted text-xs text-center py-12">Analyzing ML + Technical + News...</div>
       ) : data ? (
         <div className="space-y-4">
 
           {/* === FINAL SIGNAL === */}
           <div className={`text-center py-3 rounded border ${getSignalBg(data.final_signal)}`}>
-            <p className="text-xxs text-label-muted uppercase tracking-wider mb-1">Final Verdict</p>
+            <p className="text-xxs text-txt-muted uppercase tracking-wider mb-1">Final Verdict</p>
             <p className={`text-lg font-bold ${getSignalColor(data.final_signal)}`}>
               {data.final_signal}
             </p>
             <div className="flex items-center justify-center gap-3 mt-1.5">
-              <span className="text-xxs text-label-muted">
-                Confidence: <span className="text-label-dim font-medium">{data.final_confidence.toFixed(0)}%</span>
+              <span className="text-xxs text-txt-muted">
+                Confidence: <span className="text-txt-dim font-medium">{data.final_confidence.toFixed(0)}%</span>
               </span>
               {data.agreement === 'all_agree' && (
                 <span className="text-xxs px-1.5 py-0.5 rounded bg-accent/10 text-accent">All Agree</span>
@@ -122,12 +122,12 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
           <div className="space-y-3">
 
             {/* ML Signal */}
-            <div className="bg-surface-2 rounded p-3">
+            <div className="bg-elevated rounded p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                  <span className="text-xs font-medium text-label">ML Model</span>
-                  <span className="text-xxs text-label-muted">(40% weight)</span>
+                  <span className="text-xs font-medium text-txt">ML Model</span>
+                  <span className="text-xxs text-txt-muted">(40% weight)</span>
                 </div>
                 <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.ml.signal)}`}>
                   {data.breakdown.ml.signal}
@@ -135,22 +135,22 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
               </div>
               {getScoreBar(data.breakdown.ml.score)}
               <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xxs text-label-muted">
+                <span className="text-xxs text-txt-muted">
                   Output: {data.breakdown.ml.raw_prediction.toFixed(4)}
                 </span>
-                <span className="text-xxs text-label-muted">
+                <span className="text-xxs text-txt-muted">
                   Confidence: {data.breakdown.ml.confidence.toFixed(0)}%
                 </span>
               </div>
             </div>
 
             {/* Technical Signal */}
-            <div className="bg-surface-2 rounded p-3">
+            <div className="bg-elevated rounded p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-up" />
-                  <span className="text-xs font-medium text-label">Technical Indicators</span>
-                  <span className="text-xxs text-label-muted">(35% weight)</span>
+                  <span className="text-xs font-medium text-txt">Technical Indicators</span>
+                  <span className="text-xxs text-txt-muted">(35% weight)</span>
                 </div>
                 <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.technical.signal)}`}>
                   {data.breakdown.technical.signal}
@@ -158,20 +158,20 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
               </div>
               {getScoreBar(data.breakdown.technical.score)}
               <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xxs text-label-muted">RSI + MACD + BB + Stoch + Williams</span>
-                <span className="text-xxs text-label-muted">
+                <span className="text-xxs text-txt-muted">RSI + MACD + BB + Stoch + Williams</span>
+                <span className="text-xxs text-txt-muted">
                   Confidence: {data.breakdown.technical.confidence.toFixed(0)}%
                 </span>
               </div>
             </div>
 
             {/* Sentiment Signal */}
-            <div className="bg-surface-2 rounded p-3">
+            <div className="bg-elevated rounded p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
-                  <span className="text-xs font-medium text-label">News Sentiment</span>
-                  <span className="text-xxs text-label-muted">(25% weight)</span>
+                  <span className="text-xs font-medium text-txt">News Sentiment</span>
+                  <span className="text-xxs text-txt-muted">(25% weight)</span>
                 </div>
                 <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.sentiment.signal)}`}>
                   {data.breakdown.sentiment.signal}
@@ -179,13 +179,13 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
               </div>
               {getScoreBar(data.breakdown.sentiment.score)}
               <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xxs text-label-muted">
+                <span className="text-xxs text-txt-muted">
                   {data.breakdown.sentiment.article_count} articles
                   {data.breakdown.sentiment.article_count > 0 && (
-                    <> — <span className="text-up">{data.breakdown.sentiment.bullish}↑</span> <span className="text-down">{data.breakdown.sentiment.bearish}↓</span> <span className="text-label-muted">{data.breakdown.sentiment.neutral}—</span></>
+                    <> — <span className="text-up">{data.breakdown.sentiment.bullish}↑</span> <span className="text-down">{data.breakdown.sentiment.bearish}↓</span> <span className="text-txt-muted">{data.breakdown.sentiment.neutral}—</span></>
                   )}
                 </span>
-                <span className="text-xxs text-label-muted">
+                <span className="text-xxs text-txt-muted">
                   Confidence: {data.breakdown.sentiment.confidence.toFixed(0)}%
                 </span>
               </div>
@@ -194,7 +194,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
 
         </div>
       ) : (
-        <div className="text-label-muted text-xs text-center py-12">No data</div>
+        <div className="text-txt-muted text-xs text-center py-12">No data</div>
       )}
     </div>
   )

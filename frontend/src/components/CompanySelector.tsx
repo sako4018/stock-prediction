@@ -53,16 +53,16 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       <button
         ref={buttonRef}
         onClick={openDropdown}
-        className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-surface-3 border border-frame hover:border-frame-light transition-colors text-left"
+        className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-overlay border border-line hover:border-line-light transition-colors text-left"
       >
         <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
           <span className="text-xxs font-semibold text-accent">{currentTicker.slice(0, 2)}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-label">{currentTicker}</p>
-          <p className="text-xxs text-label-muted truncate">{currentCompany?.name || 'Custom'}</p>
+          <p className="text-xs font-semibold text-txt">{currentTicker}</p>
+          <p className="text-xxs text-txt-muted truncate">{currentCompany?.name || 'Custom'}</p>
         </div>
-        <svg className={`w-3.5 h-3.5 text-label-muted shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={`w-3.5 h-3.5 text-txt-muted shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -70,7 +70,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="bg-surface-2 border border-frame rounded-lg shadow-2xl overflow-hidden animate-fade-in"
+          className="bg-elevated border border-line rounded-lg shadow-2xl overflow-hidden animate-fade-in"
           style={{
             position: 'fixed',
             top: dropdownPos.top,
@@ -80,19 +80,19 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
           }}
         >
           {/* Search */}
-          <div className="p-2 border-b border-frame">
+          <div className="p-2 border-b border-line">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search company or ticker..."
-              className="w-full px-2.5 py-1.5 bg-surface-3 border border-frame rounded text-xs text-label placeholder-label-muted focus:outline-none focus:border-accent"
+              className="w-full px-2.5 py-1.5 bg-overlay border border-line rounded text-xs text-txt placeholder-txt-dim focus:outline-none focus:border-accent"
               autoFocus
             />
           </div>
 
           {/* Sectors */}
-          <div className="flex gap-1 px-2 py-1.5 border-b border-frame overflow-x-auto">
+          <div className="flex gap-1 px-2 py-1.5 border-b border-line overflow-x-auto">
             {SECTORS.map(sector => (
               <button
                 key={sector}
@@ -100,7 +100,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
                 className={`px-2 py-0.5 rounded text-xxs font-medium whitespace-nowrap transition-colors ${
                   activeSector === sector
                     ? 'bg-accent text-white'
-                    : 'bg-surface-3 text-label-muted hover:text-label-dim'
+                    : 'bg-overlay text-txt-muted hover:text-txt-dim'
                 }`}
               >
                 {sector}
@@ -117,34 +117,34 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
                   company.ticker === currentTicker
                     ? 'bg-accent/10'
-                    : 'hover:bg-surface-3'
+                    : 'hover:bg-overlay'
                 }`}
               >
                 <div className={`w-7 h-7 rounded flex items-center justify-center text-xxs font-semibold shrink-0 ${
-                  company.ticker === currentTicker ? 'bg-accent text-white' : 'bg-surface-4 text-label-muted'
+                  company.ticker === currentTicker ? 'bg-accent text-white' : 'bg-hover text-txt-muted'
                 }`}>
                   {company.ticker.slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-label">{company.ticker}</span>
-                    <span className="text-xxs text-label-muted">{company.sector}</span>
+                    <span className="text-xs font-semibold text-txt">{company.ticker}</span>
+                    <span className="text-xxs text-txt-muted">{company.sector}</span>
                   </div>
-                  <p className="text-xxs text-label-muted truncate">{company.name}</p>
+                  <p className="text-xxs text-txt-muted truncate">{company.name}</p>
                 </div>
                 {company.marketCap && (
-                  <span className="text-xxs text-label-muted shrink-0">{company.marketCap}</span>
+                  <span className="text-xxs text-txt-muted shrink-0">{company.marketCap}</span>
                 )}
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="px-3 py-6 text-center text-xxs text-label-muted">No results</div>
+              <div className="px-3 py-6 text-center text-xxs text-txt-muted">No results</div>
             )}
           </div>
 
           {/* Custom ticker */}
           {query && !POPULAR_STOCKS.find(c => c.ticker.toLowerCase() === query.toLowerCase()) && (
-            <div className="p-2 border-t border-frame">
+            <div className="p-2 border-t border-line">
               <button
                 onClick={() => { onSelect(query.toUpperCase()); setIsOpen(false); setQuery(''); }}
                 className="w-full px-3 py-1.5 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover transition-colors"

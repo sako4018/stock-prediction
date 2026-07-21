@@ -38,13 +38,13 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
     }
   }
 
-  if (!data) return compact ? null : <div className="bg-surface-1 border border-frame rounded-lg p-4 h-24 animate-pulse" />
+  if (!data) return compact ? null : <div className="bg-alt border border-line rounded-lg p-4 h-24 animate-pulse" />
 
   if (compact) {
     return (
       <div className="flex items-center gap-3 text-xs">
-        <span className="text-label-muted">{data.company.sector}</span>
-        <span className="text-label-muted">•</span>
+        <span className="text-txt-muted">{data.company.sector}</span>
+        <span className="text-txt-muted">•</span>
         <span className={`tabular-nums font-medium ${data.price.change >= 0 ? 'text-up' : 'text-down'}`}>
           ${data.price.current_price.toFixed(2)}
           <span className="ml-1.5 text-xxs">
@@ -62,18 +62,18 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
   }
 
   return (
-    <div className="bg-surface-1 border border-frame rounded-lg p-4">
+    <div className="bg-alt border border-line rounded-lg p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-label">{data.price.ticker}</span>
-            <span className="text-xxs px-1.5 py-0.5 rounded bg-surface-3 text-label-muted">{data.company.sector}</span>
+            <span className="text-lg font-bold text-txt">{data.price.ticker}</span>
+            <span className="text-xxs px-1.5 py-0.5 rounded bg-overlay text-txt-muted">{data.company.sector}</span>
           </div>
-          <p className="text-xs text-label-muted mt-0.5">{data.company.name}</p>
+          <p className="text-xs text-txt-muted mt-0.5">{data.company.name}</p>
         </div>
       </div>
       <div className="mb-3">
-        <p className="text-2xl font-bold tabular-nums text-label">${data.price.current_price.toFixed(2)}</p>
+        <p className="text-2xl font-bold tabular-nums text-txt">${data.price.current_price.toFixed(2)}</p>
         <p className={`text-sm tabular-nums font-medium ${data.price.change >= 0 ? 'text-up' : 'text-down'}`}>
           {data.price.change >= 0 ? '+' : ''}{data.price.change.toFixed(2)} ({data.price.change_percent.toFixed(2)}%)
         </p>
@@ -84,9 +84,9 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
           { label: 'Prev Close', value: `$${data.price.previous_close.toFixed(2)}` },
           { label: 'Industry', value: data.company.industry || '—' },
         ].map((item, i) => (
-          <div key={i} className="bg-surface-2 rounded px-2.5 py-1.5">
-            <p className="text-xxs text-label-muted">{item.label}</p>
-            <p className="text-xs font-medium text-label-dim">{item.value}</p>
+          <div key={i} className="bg-elevated rounded px-2.5 py-1.5">
+            <p className="text-xxs text-txt-muted">{item.label}</p>
+            <p className="text-xs font-medium text-txt-dim">{item.value}</p>
           </div>
         ))}
       </div>

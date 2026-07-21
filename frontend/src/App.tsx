@@ -50,7 +50,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-0">
+    <div className="flex min-h-screen bg">
       <Sidebar
         onSelect={setTicker}
         currentTicker={ticker}
@@ -58,19 +58,19 @@ function AppContent() {
         onViewChange={setActiveView}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-12 border-b border-frame flex items-center justify-between px-4 bg-surface-1 shrink-0">
+        <header className="h-12 border-b border-line flex items-center justify-between px-4 bg-alt shrink-0">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-label">{ticker}</h2>
+            <h2 className="text-sm font-semibold text-txt">{ticker}</h2>
             <CompanyInfo ticker={ticker} compact />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot" />
-              <span className="text-xxs text-label-muted">Market Data</span>
+              <span className="text-xxs text-txt-muted">Market Data</span>
             </div>
             <button
               onClick={toggleTheme}
-              className="p-1.5 rounded hover:bg-surface-3 text-label-muted hover:text-label-dim transition-colors"
+              className="p-1.5 rounded hover:bg-overlay text-txt-muted hover:text-txt-dim transition-colors"
             >
               {isDark ? '☀' : '☾'}
             </button>
@@ -96,24 +96,24 @@ function PortfolioView() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-surface-1 border border-frame rounded-lg p-5">
-        <h3 className="text-xs font-semibold text-label-muted uppercase tracking-wider mb-4">Portfolio Overview</h3>
+      <div className="bg-alt border border-line rounded-lg p-5">
+        <h3 className="text-xs font-semibold text-txt-muted uppercase tracking-wider mb-4">Portfolio Overview</h3>
         {portfolio ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Total Value', value: `$${portfolio.total_portfolio_value?.toLocaleString()}`, color: 'text-label' },
-              { label: 'Cash', value: `$${portfolio.current_cash?.toLocaleString()}`, color: 'text-label' },
-              { label: 'Invested', value: `$${portfolio.total_invested?.toLocaleString()}`, color: 'text-label-dim' },
+              { label: 'Total Value', value: `$${portfolio.total_portfolio_value?.toLocaleString()}`, color: 'text-txt' },
+              { label: 'Cash', value: `$${portfolio.current_cash?.toLocaleString()}`, color: 'text-txt' },
+              { label: 'Invested', value: `$${portfolio.total_invested?.toLocaleString()}`, color: 'text-txt-dim' },
               { label: 'Return', value: `${portfolio.total_return >= 0 ? '+' : ''}${portfolio.total_return?.toFixed(2)}%`, color: portfolio.total_return >= 0 ? 'text-up' : 'text-down' },
             ].map((item, i) => (
-              <div key={i} className="bg-surface-2 rounded-lg p-3">
-                <p className="text-xxs text-label-muted uppercase tracking-wider mb-1">{item.label}</p>
+              <div key={i} className="bg-elevated rounded-lg p-3">
+                <p className="text-xxs text-txt-muted uppercase tracking-wider mb-1">{item.label}</p>
                 <p className={`text-lg font-semibold tabular-nums ${item.color}`}>{item.value}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-label-muted py-6 text-center">Loading portfolio...</p>
+          <p className="text-sm text-txt-muted py-6 text-center">Loading portfolio...</p>
         )}
       </div>
     </div>
