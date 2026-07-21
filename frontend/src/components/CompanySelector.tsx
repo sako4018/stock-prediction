@@ -85,7 +85,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="bg-surface-elevated border border-line rounded-lg shadow-2xl overflow-hidden animate-fade-in"
+          className="bg-surface-elevated border border-line rounded-lg shadow-2xl overflow-hidden dropdown-enter"
           style={{
             position: 'fixed',
             top: dropdownPos.top,

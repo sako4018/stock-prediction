@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import FadeIn from './FadeIn'
 
 interface PredictionPanelProps {
   ticker: string
@@ -98,8 +99,14 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
       </div>
 
       {loading ? (
-        <div className="text-txt-muted text-xs text-center py-12">Analyzing ML + Technical + News...</div>
+        <div className="space-y-3">
+          <div className="h-8 skeleton" />
+          <div className="h-12 skeleton" />
+          <div className="h-4 skeleton" />
+          <div className="h-4 skeleton" />
+        </div>
       ) : data ? (
+        <FadeIn>
         <div className="space-y-4">
 
           {/* === FINAL SIGNAL === */}
@@ -193,6 +200,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
           </div>
 
         </div>
+        </FadeIn>
       ) : (
         <div className="text-txt-muted text-xs text-center py-12">No data</div>
       )}

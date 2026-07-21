@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import AnimatedNumber from './AnimatedNumber'
+import FadeIn from './FadeIn'
 
 interface CompanyInfoProps {
   ticker: string
@@ -23,8 +25,11 @@ interface CompanyData {
 
 export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
   const [data, setData] = useState<CompanyData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setData(null)
+    setLoading(true)
     fetchInfo()
   }, [ticker])
 
@@ -33,20 +38,21 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
       const res = await fetch(`/api/stocks/${ticker}`)
       const json = await res.json()
       setData(json)
-    } catch (err) {
-      console.error('Failed to fetch info:', err)
-    }
+    } catch (err) { console.error(err) }
+    setLoading(false)
   }
 
-  if (!data) return compact ? null : <div className="bg-surface-alt border border-line rounded-lg p-4 h-24 animate-pulse" />
+  if (loading) return compact ? null : <div className="bg-surface-alt border border-line rounded-lg p-4 h-24 skeleton" />
+
+  if (!data) return compact ? null : <div className="bg-surface-alt border border-line rounded-lg p-4 h-24" />
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 text-xs">
-        <span className="text-txt-muted">{data.company.sector}</span>
-        <span className="text-txt-muted">•</span>
+      <div className="flex items-center gap-3 text-xs animate-fade-in">
+        <span className="text-txt-dim">{data.company.sector}</span>
+        <span className="text-txt-dim">·</span>
         <span className={`tabular-nums font-medium ${data.price.change >= 0 ? 'text-up' : 'text-down'}`}>
-          ${data.price.current_price.toFixed(2)}
+          <AnimatedNumber value={data.price.current_price} prefix="$" className="font-medium" />
           <span className="ml-1.5 text-xxs">
             {data.price.change >= 0 ? '+' : ''}{data.price.change_percent.toFixed(2)}%
           </span>
@@ -62,34 +68,39 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
   }
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-txt">{data.price.ticker}</span>
-            <span className="text-xxs px-1.5 py-0.5 rounded bg-surface-overlay text-txt-muted">{data.company.sector}</span>
+    <FadeIn>
+      <div className="bg-surface-alt border border-line rounded-lg p-4 card-smooth">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-txt">{data.price.ticker}</span>
+              <span className="text-xxs px-1.5 py-0.5 rounded bg-surface-overlay text-txt-dim">{data.company.sector}</span>
+            </div>
+            <p className="text-xs text-txt-dim mt-0.5">{data.company.name}</p>
           </div>
-          <p className="text-xs text-txt-muted mt-0.5">{data.company.name}</p>
+        </div>
+        <div className="mb-3">
+          <p className="text-2xl font-bold tabular-nums text-txt">
+            <AnimatedNumber value={data.price.current_price} prefix="$" />
+          </p>
+          <p className={`text-sm tabular-nums font-medium ${data.price.change >= 0 ? 'text-up' : 'text-down'}`}>
+            {data.price.change >= 0 ? '+' : ''}<AnimatedNumber value={data.price.change} prefix="$" />
+            <span className="ml-1">(<AnimatedNumber value={data.price.change_percent} prefix={data.price.change_percent >= 0 ? '+' : ''} suffix="%" />)</span>
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Mkt Cap', value: formatCap(data.company.market_cap) },
+            { label: 'Prev Close', value: `$${data.price.previous_close.toFixed(2)}` },
+            { label: 'Industry', value: data.company.industry || '—' },
+          ].map((item, i) => (
+            <div key={i} className="bg-surface-elevated rounded px-2.5 py-1.5">
+              <p className="text-xxs text-txt-dim">{item.label}</p>
+              <p className="text-xs font-medium text-txt-sec">{item.value}</p>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="mb-3">
-        <p className="text-2xl font-bold tabular-nums text-txt">${data.price.current_price.toFixed(2)}</p>
-        <p className={`text-sm tabular-nums font-medium ${data.price.change >= 0 ? 'text-up' : 'text-down'}`}>
-          {data.price.change >= 0 ? '+' : ''}{data.price.change.toFixed(2)} ({data.price.change_percent.toFixed(2)}%)
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { label: 'Mkt Cap', value: formatCap(data.company.market_cap) },
-          { label: 'Prev Close', value: `$${data.price.previous_close.toFixed(2)}` },
-          { label: 'Industry', value: data.company.industry || '—' },
-        ].map((item, i) => (
-          <div key={i} className="bg-surface-elevated rounded px-2.5 py-1.5">
-            <p className="text-xxs text-txt-muted">{item.label}</p>
-            <p className="text-xs font-medium text-txt-dim">{item.value}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    </FadeIn>
   )
 }

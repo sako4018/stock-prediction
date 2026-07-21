@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import AnimatedNumber from './AnimatedNumber'
 
 interface WatchlistProps {
   onSelect: (ticker: string) => void
@@ -77,7 +78,7 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
               <span className={`text-xs font-medium ${isActive ? 'text-accent' : 'text-txt'}`}>{ticker}</span>
               {item?.price ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-txt-dim tabular-nums">${item.price.toFixed(2)}</span>
+                  <AnimatedNumber value={item.price} prefix="$" className="text-xs text-txt-sec" />
                   <span className={`text-xxs tabular-nums ${isPositive ? 'text-up' : 'text-down'}`}>
                     {isPositive ? '+' : ''}{item.changePercent?.toFixed(2)}%
                   </span>

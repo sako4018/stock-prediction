@@ -18,9 +18,82 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #3D444D; }
 ::selection { background: rgba(41, 98, 255, 0.3); }
 
-@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+/* === Animations === */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-.animate-fade-in { animation: fade-in 0.15s ease-out; }
+@keyframes fade-in-scale {
+  from { opacity: 0; transform: scale(0.98) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
+.animate-fade-in-scale { animation: fade-in-scale 0.35s ease-out; }
+.animate-slide-up { animation: slide-up 0.4s ease-out; }
 .animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* Staggered fade-in for lists */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 50ms; }
+.stagger-3 { animation-delay: 100ms; }
+.stagger-4 { animation-delay: 150ms; }
+.stagger-5 { animation-delay: 200ms; }
+
+/* Skeleton loading shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #1C2128 25%, #282E36 50%, #1C2128 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select {
+  transition: all 0.15s ease;
+}
+
+/* Number font */
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Card hover effect */
+.card-smooth {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-smooth:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dropdown animation */
+.dropdown-enter {
+  animation: fade-in-scale 0.15s ease-out;
+}
+
+/* Price flash */
+@keyframes flash-green {
+  0% { background-color: rgba(0, 200, 83, 0.15); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0% { background-color: rgba(255, 23, 68, 0.15); }
+  100% { background-color: transparent; }
+}
+.flash-up { animation: flash-green 0.8s ease-out; }
+.flash-down { animation: flash-red 0.8s ease-out; }
