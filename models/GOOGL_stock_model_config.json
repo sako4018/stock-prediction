@@ -1,6 +1,6 @@
 {
     "sequence_length": 60,
-    "n_features": 42,
-    "model_name": "AAPL_stock_model",
+    "n_features": 26,
+    "model_name": "GOOGL_stock_model",
     "architecture": "lstm_attention_v2"
 }

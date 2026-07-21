@@ -24,8 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import asyncio
 
-# Добавяне на src директорията в path
+# Добавяне на src и backend директориите в path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.dirname(__file__))
 
 from data_collection import StockDataCollector
 from preprocessing import StockDataPreprocessor
