@@ -361,4 +361,4 @@ python main.py --ticker AAPL --period 5y --train
 ---
 
 
-## Made on earth by Sercho and not exactly human
+## ❤️Made on earth by Sercho and not exactly human❤️
