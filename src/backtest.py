@@ -239,6 +239,44 @@ class StockBacktester:
             'trades': trades
         })
 
+        # Risk Management Metrics
+        portfolio_array = np.array(portfolio_values)
+        daily_returns = np.diff(portfolio_array) / portfolio_array[:-1]
+
+        # Sharpe Ratio (risk-adjusted return)
+        # > 1 = добър, > 2 = много добър
+        risk_free_rate = 0.02 / 252  # 2% годишно, дневно
+        if np.std(daily_returns) > 0:
+            sharpe_ratio = (np.mean(daily_returns) - risk_free_rate) / np.std(daily_returns) * np.sqrt(252)
+        else:
+            sharpe_ratio = 0
+
+        # Sortino Ratio (penalizes only downside volatility)
+        downside_returns = daily_returns[daily_returns < 0]
+        if len(downside_returns) > 0 and np.std(downside_returns) > 0:
+            sortino_ratio = (np.mean(daily_returns) - risk_free_rate) / np.std(downside_returns) * np.sqrt(252)
+        else:
+            sortino_ratio = 0
+
+        # Max Drawdown (най-голям спад от връх до дъно)
+        peak = np.maximum.accumulate(portfolio_array)
+        drawdown = (portfolio_array - peak) / peak
+        max_drawdown = np.min(drawdown) * 100
+
+        # Volatility (годишна волатилност)
+        volatility = np.std(daily_returns) * np.sqrt(252) * 100
+
+        # Calmar Ratio (return / max drawdown)
+        calmar_ratio = total_return / abs(max_drawdown) if max_drawdown != 0 else 0
+
+        self.results.update({
+            'sharpe_ratio': sharpe_ratio,
+            'sortino_ratio': sortino_ratio,
+            'max_drawdown': max_drawdown,
+            'volatility': volatility,
+            'calmar_ratio': calmar_ratio
+        })
+
         # Принтиране на резултати
         print("="*60)
         print("📊 РЕЗУЛТАТИ ОТ СИМУЛАЦИЯТА")
@@ -261,6 +299,13 @@ class StockBacktester:
             print(f"\n   ✅ Печелим срещу Buy & Hold!")
         else:
             print(f"\n   ❌ Buy & Hold е по-добра стратегия")
+
+        print(f"\n📊 RISK METRICS:")
+        print(f"   Sharpe Ratio:     {sharpe_ratio:.2f} {'✅' if sharpe_ratio > 1 else '⚠️' if sharpe_ratio > 0 else '❌'}")
+        print(f"   Sortino Ratio:    {sortino_ratio:.2f} {'✅' if sortino_ratio > 1 else '⚠️' if sortino_ratio > 0 else '❌'}")
+        print(f"   Max Drawdown:     {max_drawdown:.2f}% {'✅' if max_drawdown > -20 else '⚠️' if max_drawdown > -40 else '❌'}")
+        print(f"   Volatility:       {volatility:.2f}%")
+        print(f"   Calmar Ratio:     {calmar_ratio:.2f}")
 
         print("\n" + "="*60)
 

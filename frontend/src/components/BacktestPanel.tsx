@@ -22,6 +22,11 @@ interface BacktestResults {
     win_rate: number
     buy_and_hold_return: number
     outperformance: number
+    sharpe_ratio: number
+    sortino_ratio: number
+    max_drawdown: number
+    volatility: number
+    calmar_ratio: number
   }
 }
 
@@ -161,6 +166,63 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
                 {data.results.outperformance >= 0 ? '+' : ''}{data.results.outperformance?.toFixed(2)}%
               </p>
             </div>
+          </div>
+
+          {/* Risk Metrics */}
+          <div className="col-span-full">
+            <div className="bg-dark-bg rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-400 mb-3">📊 Risk Management Metrics</h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">Sharpe Ratio</p>
+                  <p className={`text-lg font-bold ${
+                    data.results.sharpe_ratio > 1 ? 'text-stock-green' :
+                    data.results.sharpe_ratio > 0 ? 'text-yellow-500' : 'text-stock-red'
+                  }`}>
+                    {data.results.sharpe_ratio?.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-500">>1 = Good</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">Sortino Ratio</p>
+                  <p className={`text-lg font-bold ${
+                    data.results.sortino_ratio > 1 ? 'text-stock-green' :
+                    data.results.sortino_ratio > 0 ? 'text-yellow-500' : 'text-stock-red'
+                  }`}>
+                    {data.results.sortino_ratio?.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-500">>1 = Good</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">Max Drawdown</p>
+                  <p className={`text-lg font-bold ${
+                    data.results.max_drawdown > -20 ? 'text-stock-green' :
+                    data.results.max_drawdown > -40 ? 'text-yellow-500' : 'text-stock-red'
+                  }`}>
+                    {data.results.max_drawdown?.toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500">>-20% = Good</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">Volatility</p>
+                  <p className="text-lg font-bold text-gray-300">
+                    {data.results.volatility?.toFixed(2)}%
+                  </p>
+                  <p className="text-xs text-gray-500">Annualized</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-500">Calmar Ratio</p>
+                  <p className={`text-lg font-bold ${
+                    data.results.calmar_ratio > 1 ? 'text-stock-green' :
+                    data.results.calmar_ratio > 0 ? 'text-yellow-500' : 'text-stock-red'
+                  }`}>
+                    {data.results.calmar_ratio?.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-500">Return/DD</p>
+                </div>
+              </div>
+            </div>
+          </div>
           </div>
         </div>
       ) : (
