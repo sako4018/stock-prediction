@@ -7,25 +7,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Accent
-        'accent': '#2962FF',
-        'accent-hover': '#1E4BD8',
-        'up': '#00C853',
-        'down': '#FF1744',
-        'warn': '#FF9100',
-        // Surfaces — prefixed 'surface-' so bg-surface-* generates correctly
-        'surface': '#0D1117',
-        'surface-alt': '#161B22',
-        'surface-elevated': '#1C2128',
-        'surface-overlay': '#21262D',
-        'surface-hover': '#282E36',
-        // Borders
-        'line': '#30363D',
-        'line-light': '#3D444D',
-        // Text
-        'txt': '#F0F6FC',
-        'txt-sec': '#8B949E',
-        'txt-dim': '#6E7681',
+        'accent': '#7c4dff',
+        'accent-hover': '#6a3de8',
+        'accent-alt': '#00b8d4',
+        'up': '#69f0ae',
+        'down': '#ff6e40',
+        'warn': '#ffd740',
+        'surface': '#0a0a0f',
+        'surface-alt': '#13131a',
+        'surface-elevated': '#1c1c28',
+        'surface-overlay': '#222233',
+        'surface-hover': '#2a2a3d',
+        'line': '#222233',
+        'line-light': '#2e2e44',
+        'txt': '#e8e8e8',
+        'txt-sec': '#a0a0b8',
+        'txt-dim': '#6b6b80',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Noto Sans', 'Helvetica', 'Arial', 'sans-serif'],

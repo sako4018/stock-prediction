@@ -8,15 +8,15 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: #0D1117;
-  color: #F0F6FC;
+  background: #0a0a0f;
+  color: #e8e8e8;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #30363D; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3D444D; }
-::selection { background: rgba(41, 98, 255, 0.3); }
+::-webkit-scrollbar-thumb { background: #222233; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2e2e44; }
+::selection { background: rgba(124, 77, 255, 0.3); }
 
 /* === Animations === */
 @keyframes fade-in {
@@ -49,51 +49,58 @@ body {
 .animate-slide-up { animation: slide-up 0.4s ease-out; }
 .animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
 
-/* Staggered fade-in for lists */
+/* Staggered fade-in */
 .stagger-1 { animation-delay: 0ms; }
 .stagger-2 { animation-delay: 50ms; }
 .stagger-3 { animation-delay: 100ms; }
 .stagger-4 { animation-delay: 150ms; }
 .stagger-5 { animation-delay: 200ms; }
 
-/* Skeleton loading shimmer */
+/* Skeleton loading */
 .skeleton {
-  background: linear-gradient(90deg, #1C2128 25%, #282E36 50%, #1C2128 75%);
+  background: linear-gradient(90deg, #13131a 25%, #1c1c28 50%, #13131a 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 4px;
 }
 
-/* Smooth transitions for all interactive elements */
 button, a, input, select {
   transition: all 0.15s ease;
 }
 
-/* Number font */
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* Card hover effect */
 .card-smooth {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .card-smooth:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(124, 77, 255, 0.08);
+  border-color: #2e2e44;
 }
 
-/* Dropdown animation */
 .dropdown-enter {
   animation: fade-in-scale 0.15s ease-out;
 }
 
-/* Price flash */
 @keyframes flash-green {
-  0% { background-color: rgba(0, 200, 83, 0.15); }
+  0% { background-color: rgba(105, 240, 174, 0.15); }
   100% { background-color: transparent; }
 }
 @keyframes flash-red {
-  0% { background-color: rgba(255, 23, 68, 0.15); }
+  0% { background-color: rgba(255, 110, 64, 0.15); }
   100% { background-color: transparent; }
 }
 .flash-up { animation: flash-green 0.8s ease-out; }
 .flash-down { animation: flash-red 0.8s ease-out; }
+
+/* Neon glow effects */
+.glow-accent {
+  box-shadow: 0 0 15px rgba(124, 77, 255, 0.15);
+}
+.glow-up {
+  box-shadow: 0 0 15px rgba(105, 240, 174, 0.15);
+}
+.glow-down {
+  box-shadow: 0 0 15px rgba(255, 110, 64, 0.15);
+}
