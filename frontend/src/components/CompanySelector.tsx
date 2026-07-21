@@ -31,7 +31,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
   const currentCompany = POPULAR_STOCKS.find(c => c.ticker === currentTicker)
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-[100]" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-surface-3 border border-frame hover:border-frame-light transition-colors text-left"
@@ -49,7 +49,7 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-80 bg-surface-2 border border-frame rounded-lg shadow-xl z-50 overflow-hidden animate-fade-in">
+        <div className="absolute top-full left-0 mt-1 w-80 bg-surface-2 border border-frame rounded-lg shadow-2xl z-[100] overflow-hidden animate-fade-in">
           {/* Search */}
           <div className="p-2 border-b border-frame">
             <input

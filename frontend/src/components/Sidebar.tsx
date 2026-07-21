@@ -18,7 +18,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ onSelect, currentTicker, activeView, onViewChange }: SidebarProps) {
   return (
-    <aside className="w-56 h-screen bg-surface-1 border-r border-frame flex flex-col shrink-0">
+    <aside className="w-56 h-screen bg-surface-1 border-r border-frame flex flex-col shrink-0 overflow-visible">
       {/* Brand */}
       <div className="h-12 border-b border-frame flex items-center px-4 gap-2.5 shrink-0">
         <div className="w-6 h-6 rounded bg-accent flex items-center justify-center">
@@ -30,7 +30,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
       </div>
 
       {/* Company Selector */}
-      <div className="p-3 border-b border-frame">
+      <div className="p-3 border-b border-frame relative z-[100]">
         <CompanySelector onSelect={onSelect} currentTicker={currentTicker} />
       </div>
 
