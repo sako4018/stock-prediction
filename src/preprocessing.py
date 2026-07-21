@@ -48,40 +48,39 @@ class StockDataPreprocessor:
         print("📈 Изчисляване на технически индикатори...")
 
         df = self.data.copy()
+        n = len(df)
+
+        # Adaptive windows based on available data
+        sma20_w = min(20, max(5, n // 3))
+        sma50_w = min(50, max(10, n // 2))
 
         # 1. Simple Moving Averages (SMA)
-        # SMA показва средната цена за последните N дни
-        df['SMA_20'] = df['Close'].rolling(window=20).mean()  # 20-дневна средна
-        df['SMA_50'] = df['Close'].rolling(window=50).mean()  # 50-дневна средна
+        df['SMA_20'] = df['Close'].rolling(window=sma20_w).mean()
+        df['SMA_50'] = df['Close'].rolling(window=sma50_w).mean()
 
         # 2. Exponential Moving Averages (EMA)
-        # EMA дава повече тежест на по-новите цени
-        df['EMA_12'] = df['Close'].ewm(span=12, adjust=False).mean()
-        df['EMA_26'] = df['Close'].ewm(span=26, adjust=False).mean()
+        ema12_w = min(12, max(3, n // 4))
+        ema26_w = min(26, max(5, n // 2))
+        df['EMA_12'] = df['Close'].ewm(span=ema12_w, adjust=False).mean()
+        df['EMA_26'] = df['Close'].ewm(span=ema26_w, adjust=False).mean()
 
-        # 3. RSI (Relative Strength Index)
-        # RSI измерва "свръхкупеност" или "свръхпродаденост"
-        # Стойности: 0-100
-        # > 70 = свръхкупена (може да падне)
-        # < 30 = свръхпродадена (може да се качи)
+        # 3. RSI
+        rsi_w = min(14, max(3, n // 4))
         delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        gain = (delta.where(delta > 0, 0)).rolling(window=rsi_w).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_w).mean()
         rs = gain / loss
         df['RSI'] = 100 - (100 / (1 + rs))
 
-        # 4. MACD (Moving Average Convergence Divergence)
-        # MACD показва промени в тренда
+        # 4. MACD
         df['MACD'] = df['EMA_12'] - df['EMA_26']
-        df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        df['MACD_Signal'] = df['MACD'].ewm(span=min(9, max(2, n // 5)), adjust=False).mean()
         df['MACD_Histogram'] = df['MACD'] - df['MACD_Signal']
 
         # 5. Bollinger Bands
-        # Bollinger Bands показват волатилността
-        # Когато цената е близо до горната лента = скъпо
-        # Когато цената е близо до долната лента = евтино
-        df['BB_Middle'] = df['Close'].rolling(window=20).mean()
-        bb_std = df['Close'].rolling(window=20).std()
+        bb_w = min(20, max(5, n // 3))
+        df['BB_Middle'] = df['Close'].rolling(window=bb_w).mean()
+        bb_std = df['Close'].rolling(window=bb_w).std()
         df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
         df['BB_Lower'] = df['BB_Middle'] - (bb_std * 2)
 
@@ -101,23 +100,20 @@ class StockDataPreprocessor:
         # Разликата между цената при отваряне и затваряне
         df['OC_Range'] = df['Close'] - df['Open']
 
-        # 10. ATR (Average True Range)
-        # ATR измерва волатилността на пазара
-        # Висок ATR = висока волатилност, нисък ATR = стабилен пазар
+        # 10. ATR
+        atr_w = min(14, max(3, n // 4))
         high_low = df['High'] - df['Low']
         high_close = (df['High'] - df['Close'].shift()).abs()
         low_close = (df['Low'] - df['Close'].shift()).abs()
         true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        df['ATR'] = true_range.rolling(window=14).mean()
+        df['ATR'] = true_range.rolling(window=atr_w).mean()
 
         # 11. Stochastic Oscillator
-        # Сравнява текущата цена с диапазона за определен период
-        # %K = (Close - Low_14) / (High_14 - Low_14) * 100
-        # %D = SMA(%K, 3) - сигнален线
-        low_14 = df['Low'].rolling(window=14).min()
-        high_14 = df['High'].rolling(window=14).max()
+        stoch_w = min(14, max(3, n // 4))
+        low_14 = df['Low'].rolling(window=stoch_w).min()
+        high_14 = df['High'].rolling(window=stoch_w).max()
         df['Stoch_K'] = ((df['Close'] - low_14) / (high_14 - low_14)) * 100
-        df['Stoch_D'] = df['Stoch_K'].rolling(window=3).mean()
+        df['Stoch_D'] = df['Stoch_K'].rolling(window=min(3, max(1, n // 8))).mean()
 
         # 12. Williams %R
         df['Williams_R'] = ((high_14 - df['Close']) / (high_14 - low_14)) * -100
@@ -137,21 +133,23 @@ class StockDataPreprocessor:
         mfi_ratio = positive_flow / negative_flow
         df['MFI'] = 100 - (100 / (1 + mfi_ratio))
 
-        # 16. CCI (Commodity Channel Index)
-        tp_sma = typical_price.rolling(20).mean()
-        tp_mad = typical_price.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean())
+        # 16. CCI
+        cci_w = min(20, max(5, n // 3))
+        tp_sma = typical_price.rolling(cci_w).mean()
+        tp_mad = typical_price.rolling(cci_w).apply(lambda x: np.abs(x - x.mean()).mean())
         df['CCI'] = (typical_price - tp_sma) / (0.015 * tp_mad)
 
-        # 17. ADX (Average Directional Index) - сила на тренда
+        # 17. ADX
+        adx_w = min(14, max(3, n // 4))
         plus_dm = df['High'].diff()
         minus_dm = -df['Low'].diff()
         plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0)
         minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0)
-        atr14 = true_range.rolling(14).mean()
-        plus_di = 100 * (plus_dm.rolling(14).mean() / atr14)
-        minus_di = 100 * (minus_dm.rolling(14).mean() / atr14)
+        atr_adx = true_range.rolling(adx_w).mean()
+        plus_di = 100 * (plus_dm.rolling(adx_w).mean() / atr_adx)
+        minus_di = 100 * (minus_dm.rolling(adx_w).mean() / atr_adx)
         dx = 100 * ((plus_di - minus_di).abs() / (plus_di + minus_di))
-        df['ADX'] = dx.rolling(14).mean()
+        df['ADX'] = dx.rolling(adx_w).mean()
 
         # 18. Price Patterns
         # Higher High / Lower Low
