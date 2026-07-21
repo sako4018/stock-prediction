@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useTheme } from '../ThemeContext'
 
 interface WatchlistProps {
   onSelect: (ticker: string) => void
@@ -20,8 +19,6 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
   })
   const [prices, setPrices] = useState<Record<string, WatchlistItem>>({})
   const [loading, setLoading] = useState(true)
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
 
   useEffect(() => {
     localStorage.setItem('watchlist', JSON.stringify(watchlist))
@@ -31,7 +28,6 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
   const fetchPrices = async () => {
     setLoading(true)
     const newPrices: Record<string, WatchlistItem> = {}
-
     for (const ticker of watchlist) {
       try {
         const res = await fetch(`/api/stocks/${ticker}`)
@@ -48,78 +44,47 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
         newPrices[ticker] = { ticker, price: null, change: null, changePercent: null }
       }
     }
-
     setPrices(newPrices)
     setLoading(false)
   }
 
-  const addToWatchlist = () => {
-    const input = prompt('Enter ticker symbol:')
+  const addSymbol = () => {
+    const input = prompt('Ticker symbol:')
     if (input && !watchlist.includes(input.toUpperCase())) {
       setWatchlist([...watchlist, input.toUpperCase()])
     }
   }
 
-  const removeFromWatchlist = (ticker: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setWatchlist(watchlist.filter(t => t !== ticker))
-  }
-
   return (
-    <div className={`rounded-xl border p-4 ${
-      isDark ? 'bg-dark-card border-dark-border' : 'bg-white border-gray-200'
-    }`}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">📋 Watchlist</h3>
-        <button
-          onClick={addToWatchlist}
-          className="text-stock-blue text-xs hover:underline"
-        >
-          + Add
-        </button>
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">Watchlist</span>
+        <button onClick={addSymbol} className="text-xxs text-accent hover:text-accent-hover">+ Add</button>
       </div>
-
-      <div className="space-y-1">
+      <div className="space-y-px">
         {watchlist.map(ticker => {
           const item = prices[ticker]
           const isActive = ticker === currentTicker
           const isPositive = (item?.changePercent ?? 0) >= 0
-
           return (
             <button
               key={ticker}
               onClick={() => onSelect(ticker)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors group ${
-                isActive
-                  ? isDark ? 'bg-stock-blue/20' : 'bg-blue-50'
-                  : isDark ? 'hover:bg-dark-bg' : 'hover:bg-gray-50'
+              className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-left transition-colors group ${
+                isActive ? 'bg-accent/10' : 'hover:bg-surface-3'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold ${isActive ? 'text-stock-blue' : ''}`}>{ticker}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {item?.price ? (
-                  <>
-                    <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                      ${item.price.toFixed(2)}
-                    </span>
-                    <span className={`text-xs ${isPositive ? 'text-stock-green' : 'text-stock-red'}`}>
-                      {isPositive ? '+' : ''}{item.changePercent?.toFixed(2)}%
-                    </span>
-                  </>
-                ) : (
-                  <span className={`text-xs ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                    {loading ? '...' : '—'}
+              <span className={`text-xs font-medium ${isActive ? 'text-accent' : 'text-text-primary'}`}>{ticker}</span>
+              {item?.price ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-secondary tabular-nums">${item.price.toFixed(2)}</span>
+                  <span className={`text-xxs tabular-nums ${isPositive ? 'text-up' : 'text-down'}`}>
+                    {isPositive ? '+' : ''}{item.changePercent?.toFixed(2)}%
                   </span>
-                )}
-                <button
-                  onClick={(e) => removeFromWatchlist(ticker, e)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-stock-red text-xs transition-opacity"
-                >
-                  ✕
-                </button>
-              </div>
+                </div>
+              ) : (
+                <span className="text-xxs text-text-muted">{loading ? '—' : '—'}</span>
+              )}
             </button>
           )
         })}

@@ -22,9 +22,7 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
   const [signals, setSignals] = useState<Signals | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchSignals()
-  }, [ticker])
+  useEffect(() => { fetchSignals() }, [ticker])
 
   const fetchSignals = async () => {
     setLoading(true)
@@ -32,123 +30,65 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
       const res = await fetch(`/api/stocks/${ticker}/signals`)
       const data = await res.json()
       setSignals(data)
-    } catch (err) {
-      console.error('Failed to fetch signals:', err)
-    }
+    } catch (err) { console.error(err) }
     setLoading(false)
   }
 
   const getSignalColor = (signal: string) => {
-    if (signal.includes('BUY') || signal.includes('OVERSOLD')) return 'text-stock-green'
-    if (signal.includes('SELL') || signal.includes('OVERBOUGHT')) return 'text-stock-red'
-    return 'text-gray-400'
+    if (signal.includes('BUY') || signal.includes('OVERSOLD') || signal.includes('BULLISH')) return 'text-up'
+    if (signal.includes('SELL') || signal.includes('OVERBOUGHT') || signal.includes('BEARISH')) return 'text-down'
+    return 'text-text-muted'
+  }
+
+  const getSignalBg = (signal: string) => {
+    if (signal.includes('BUY') || signal.includes('OVERSOLD') || signal.includes('BULLISH')) return 'bg-up/10'
+    if (signal.includes('SELL') || signal.includes('OVERBOUGHT') || signal.includes('BEARISH')) return 'bg-down/10'
+    return 'bg-surface-3'
   }
 
   return (
-    <div className="bg-dark-card border border-dark-border rounded-xl p-6 card-hover">
-      <h3 className="text-lg font-semibold mb-4">📡 Technical Signals</h3>
+    <div className="bg-surface-1 border border-border rounded-lg p-4">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">Technical Signals</span>
+        <button onClick={fetchSignals} disabled={loading}
+          className="text-xxs text-accent hover:text-accent-hover disabled:text-text-muted">
+          {loading ? '...' : 'Refresh'}
+        </button>
+      </div>
 
       {loading ? (
-        <div className="text-gray-500 text-center py-8">Loading signals...</div>
+        <div className="text-text-muted text-xs text-center py-8">Loading...</div>
       ) : signals ? (
-        <div className="space-y-4">
-          {/* Overall Recommendation */}
-          <div className={`text-center py-3 rounded-lg ${
-            signals.recommendation.includes('BUY') ? 'bg-green-500/20' :
-            signals.recommendation.includes('SELL') ? 'bg-red-500/20' :
-            'bg-gray-500/20'
-          }`}>
-            <p className="text-sm text-gray-400">Overall (6 Indicators)</p>
-            <p className={`text-xl font-bold ${
-              signals.recommendation.includes('BUY') ? 'text-stock-green' :
-              signals.recommendation.includes('SELL') ? 'text-stock-red' :
-              'text-gray-400'
-            }`}>
+        <div className="space-y-3">
+          {/* Recommendation */}
+          <div className={`text-center py-2.5 rounded ${getSignalBg(signals.recommendation)}`}>
+            <p className={`text-sm font-semibold ${getSignalColor(signals.recommendation)}`}>
               {signals.recommendation}
             </p>
           </div>
 
-          {/* RSI */}
-          <div className="bg-dark-bg rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">RSI (14)</span>
-              <span className={`text-sm font-medium ${getSignalColor(signals.indicators.rsi.signal)}`}>
-                {signals.indicators.rsi.value.toFixed(1)}
-              </span>
+          {/* Indicators */}
+          {[
+            { name: 'RSI (14)', value: signals.indicators.rsi.value.toFixed(1), signal: signals.indicators.rsi.signal },
+            { name: 'MACD', value: signals.indicators.macd.value.toFixed(4), signal: signals.indicators.macd.signal },
+            { name: 'Stochastic', value: `%K ${signals.indicators.stochastic.k.toFixed(0)} / %D ${signals.indicators.stochastic.d.toFixed(0)}`, signal: signals.indicators.stochastic.signal },
+            { name: 'Williams %R', value: signals.indicators.williams_r.value.toFixed(1), signal: signals.indicators.williams_r.signal },
+            { name: 'ATR', value: `${signals.indicators.atr.percent.toFixed(1)}%`, signal: signals.indicators.atr.signal },
+            { name: 'Bollinger', value: signals.indicators.bollinger.signal, signal: signals.indicators.bollinger.signal },
+          ].map((ind, i) => (
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+              <span className="text-xs text-text-muted">{ind.name}</span>
+              <div className="text-right">
+                <span className="text-xs text-text-secondary tabular-nums mr-2">{ind.value}</span>
+                <span className={`text-xxs font-medium ${getSignalColor(ind.signal)}`}>
+                  {ind.signal.split(' ')[0]}
+                </span>
+              </div>
             </div>
-            <p className={`text-xs mt-1 ${getSignalColor(signals.indicators.rsi.signal)}`}>
-              {signals.indicators.rsi.signal}
-            </p>
-          </div>
-
-          {/* MACD */}
-          <div className="bg-dark-bg rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">MACD</span>
-              <span className={`text-sm font-medium ${getSignalColor(signals.indicators.macd.signal)}`}>
-                {signals.indicators.macd.value.toFixed(4)}
-              </span>
-            </div>
-            <p className={`text-xs mt-1 ${getSignalColor(signals.indicators.macd.signal)}`}>
-              {signals.indicators.macd.signal}
-            </p>
-          </div>
-
-          {/* Bollinger Bands */}
-          <div className="bg-dark-bg rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Bollinger</span>
-              <span className={`text-sm font-medium ${getSignalColor(signals.indicators.bollinger.signal)}`}>
-                {signals.indicators.bollinger.signal}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>L: ${signals.indicators.bollinger.lower.toFixed(2)}</span>
-              <span>U: ${signals.indicators.bollinger.upper.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* ATR */}
-          <div className="bg-dark-bg rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">ATR (14)</span>
-              <span className={`text-sm font-medium ${signals.indicators.atr.signal === 'HIGH VOLATILITY' ? 'text-stock-red' : signals.indicators.atr.signal === 'LOW VOLATILITY' ? 'text-stock-green' : 'text-gray-400'}`}>
-                {signals.indicators.atr.value.toFixed(2)} ({signals.indicators.atr.percent.toFixed(1)}%)
-              </span>
-            </div>
-            <p className={`text-xs mt-1 ${signals.indicators.atr.signal === 'HIGH VOLATILITY' ? 'text-stock-red' : signals.indicators.atr.signal === 'LOW VOLATILITY' ? 'text-stock-green' : 'text-gray-400'}`}>
-              {signals.indicators.atr.signal}
-            </p>
-          </div>
-
-          {/* Stochastic */}
-          <div className="bg-dark-bg rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Stochastic</span>
-              <span className={`text-sm font-medium ${getSignalColor(signals.indicators.stochastic.signal)}`}>
-                %K: {signals.indicators.stochastic.k.toFixed(1)} / %D: {signals.indicators.stochastic.d.toFixed(1)}
-              </span>
-            </div>
-            <p className={`text-xs mt-1 ${getSignalColor(signals.indicators.stochastic.signal)}`}>
-              {signals.indicators.stochastic.signal}
-            </p>
-          </div>
-
-          {/* Williams %R */}
-          <div className="bg-dark-bg rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Williams %R</span>
-              <span className={`text-sm font-medium ${getSignalColor(signals.indicators.williams_r.signal)}`}>
-                {signals.indicators.williams_r.value.toFixed(1)}
-              </span>
-            </div>
-            <p className={`text-xs mt-1 ${getSignalColor(signals.indicators.williams_r.signal)}`}>
-              {signals.indicators.williams_r.signal}
-            </p>
-          </div>
+          ))}
         </div>
       ) : (
-        <div className="text-gray-500 text-center py-8">No signals available</div>
+        <div className="text-text-muted text-xs text-center py-8">No data</div>
       )}
     </div>
   )

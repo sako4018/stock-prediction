@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 interface BacktestPanelProps {
   ticker: string
@@ -13,13 +13,11 @@ interface BacktestResults {
     precision: number
     recall: number
     f1_score: number
-    initial_capital: number
-    final_capital: number
     total_return: number
+    win_rate: number
     total_trades: number
     profitable_trades: number
     losing_trades: number
-    win_rate: number
     buy_and_hold_return: number
     outperformance: number
     sharpe_ratio: number
@@ -34,9 +32,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
   const [data, setData] = useState<BacktestResults | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    runBacktest()
-  }, [ticker])
+  useEffect(() => { runBacktest() }, [ticker])
 
   const runBacktest = async () => {
     setLoading(true)
@@ -44,188 +40,95 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
       const res = await fetch(`/api/stocks/${ticker}/backtest?period=2y&initial_capital=10000`)
       const json = await res.json()
       setData(json)
-    } catch (err) {
-      console.error('Backtest failed:', err)
-    }
+    } catch (err) { console.error(err) }
     setLoading(false)
   }
 
   const chartData = data ? [
-    { name: 'Strategy', value: data.results.total_return, color: data.results.total_return >= 0 ? '#00C853' : '#FF1744' },
-    { name: 'Buy & Hold', value: data.results.buy_and_hold_return, color: '#2979FF' },
+    { name: 'Strategy', value: data.results.total_return, color: data.results.total_return >= 0 ? '#22C55E' : '#EF4444' },
+    { name: 'Buy & Hold', value: data.results.buy_and_hold_return, color: '#3B82F6' },
   ] : []
 
+  const MetricCard = ({ label, value, color = 'text-text-primary', sub }: { label: string; value: string; color?: string; sub?: string }) => (
+    <div className="bg-surface-2 rounded p-3">
+      <p className="text-xxs text-text-muted uppercase tracking-wider mb-1">{label}</p>
+      <p className={`text-lg font-semibold tabular-nums ${color}`}>{value}</p>
+      {sub && <p className="text-xxs text-text-muted mt-0.5">{sub}</p>}
+    </div>
+  )
+
   return (
-    <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">💰 Backtest Results</h3>
-        <button
-          onClick={runBacktest}
-          disabled={loading}
-          className="text-xs bg-dark-bg px-3 py-1 rounded hover:bg-dark-border transition-colors"
-        >
+    <div className="bg-surface-1 border border-border rounded-lg p-5">
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">Backtest Results</span>
+        <button onClick={runBacktest} disabled={loading}
+          className="text-xxs text-accent hover:text-accent-hover disabled:text-text-muted">
           {loading ? 'Running...' : 'Run Again'}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-gray-500 text-center py-12">Running backtest simulation...</div>
+        <div className="text-text-muted text-xs text-center py-16">Running simulation...</div>
       ) : data ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Metrics */}
-          <div className="space-y-4">
-            {/* Performance Metrics */}
-            <div className="bg-dark-bg rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-400 mb-3">Performance Metrics</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-gray-500">Accuracy</p>
-                  <p className="text-lg font-bold">{data.results.accuracy?.toFixed(1)}%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Precision</p>
-                  <p className="text-lg font-bold">{data.results.precision?.toFixed(1)}%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Recall</p>
-                  <p className="text-lg font-bold">{data.results.recall?.toFixed(1)}%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">F1-Score</p>
-                  <p className="text-lg font-bold">{data.results.f1_score?.toFixed(1)}%</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Trading Metrics */}
-            <div className="bg-dark-bg rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-400 mb-3">Trading Results</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-400">Total Return</span>
-                  <span className={`font-bold ${data.results.total_return >= 0 ? 'text-stock-green' : 'text-stock-red'}`}>
-                    {data.results.total_return >= 0 ? '+' : ''}{data.results.total_return?.toFixed(2)}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-400">Win Rate</span>
-                  <span className="font-bold">{data.results.win_rate?.toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-400">Total Trades</span>
-                  <span className="font-bold">{data.results.total_trades}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-400">Profitable</span>
-                  <span className="text-stock-green font-bold">{data.results.profitable_trades}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-400">Losing</span>
-                  <span className="text-stock-red font-bold">{data.results.losing_trades}</span>
-                </div>
-              </div>
+        <div className="space-y-5">
+          {/* Performance Metrics */}
+          <div>
+            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Accuracy Metrics</p>
+            <div className="grid grid-cols-4 gap-2">
+              <MetricCard label="Accuracy" value={`${data.results.accuracy?.toFixed(1)}%`} />
+              <MetricCard label="Precision" value={`${data.results.precision?.toFixed(1)}%`} />
+              <MetricCard label="Recall" value={`${data.results.recall?.toFixed(1)}%`} />
+              <MetricCard label="F1-Score" value={`${data.results.f1_score?.toFixed(1)}%`} />
             </div>
           </div>
 
-          {/* Chart & Comparison */}
-          <div className="space-y-4">
-            {/* Return Comparison */}
-            <div className="bg-dark-bg rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-400 mb-3">Strategy vs Buy & Hold</h4>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" />
-                    <XAxis type="number" stroke="#666" tick={{ fontSize: 12 }} />
-                    <YAxis type="category" dataKey="name" stroke="#666" tick={{ fontSize: 12 }} width={80} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#12121a',
-                        border: '1px solid #1e1e2e',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Outperformance */}
-            <div className={`text-center p-4 rounded-lg ${
-              data.results.outperformance >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'
-            }`}>
-              <p className="text-sm text-gray-400">Outperformance vs Buy & Hold</p>
-              <p className={`text-2xl font-bold ${
-                data.results.outperformance >= 0 ? 'text-stock-green' : 'text-stock-red'
-              }`}>
-                {data.results.outperformance >= 0 ? '+' : ''}{data.results.outperformance?.toFixed(2)}%
-              </p>
+          {/* Trading Results */}
+          <div>
+            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Trading Performance</p>
+            <div className="grid grid-cols-4 gap-2">
+              <MetricCard label="Total Return" value={`${data.results.total_return >= 0 ? '+' : ''}${data.results.total_return?.toFixed(2)}%`}
+                color={data.results.total_return >= 0 ? 'text-up' : 'text-down'} />
+              <MetricCard label="Win Rate" value={`${data.results.win_rate?.toFixed(1)}%`} />
+              <MetricCard label="Total Trades" value={`${data.results.total_trades}`} />
+              <MetricCard label="Outperformance" value={`${data.results.outperformance >= 0 ? '+' : ''}${data.results.outperformance?.toFixed(2)}%`}
+                color={data.results.outperformance >= 0 ? 'text-up' : 'text-down'} sub="vs Buy & Hold" />
             </div>
           </div>
 
           {/* Risk Metrics */}
-          <div className="col-span-full">
-            <div className="bg-dark-bg rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-400 mb-3">📊 Risk Management Metrics</h4>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Sharpe Ratio</p>
-                  <p className={`text-lg font-bold ${
-                    data.results.sharpe_ratio > 1 ? 'text-stock-green' :
-                    data.results.sharpe_ratio > 0 ? 'text-yellow-500' : 'text-stock-red'
-                  }`}>
-                    {data.results.sharpe_ratio?.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500">{">"}1 = Good</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Sortino Ratio</p>
-                  <p className={`text-lg font-bold ${
-                    data.results.sortino_ratio > 1 ? 'text-stock-green' :
-                    data.results.sortino_ratio > 0 ? 'text-yellow-500' : 'text-stock-red'
-                  }`}>
-                    {data.results.sortino_ratio?.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500">{">"}1 = Good</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Max Drawdown</p>
-                  <p className={`text-lg font-bold ${
-                    data.results.max_drawdown > -20 ? 'text-stock-green' :
-                    data.results.max_drawdown > -40 ? 'text-yellow-500' : 'text-stock-red'
-                  }`}>
-                    {data.results.max_drawdown?.toFixed(2)}%
-                  </p>
-                  <p className="text-xs text-gray-500">{">"}-20% = Good</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Volatility</p>
-                  <p className="text-lg font-bold text-gray-300">
-                    {data.results.volatility?.toFixed(2)}%
-                  </p>
-                  <p className="text-xs text-gray-500">Annualized</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">Calmar Ratio</p>
-                  <p className={`text-lg font-bold ${
-                    data.results.calmar_ratio > 1 ? 'text-stock-green' :
-                    data.results.calmar_ratio > 0 ? 'text-yellow-500' : 'text-stock-red'
-                  }`}>
-                    {data.results.calmar_ratio?.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500">Return/DD</p>
-                </div>
-              </div>
+          <div>
+            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Risk Metrics</p>
+            <div className="grid grid-cols-5 gap-2">
+              <MetricCard label="Sharpe" value={data.results.sharpe_ratio?.toFixed(2)}
+                color={data.results.sharpe_ratio > 1 ? 'text-up' : data.results.sharpe_ratio > 0 ? 'text-text-secondary' : 'text-down'} />
+              <MetricCard label="Sortino" value={data.results.sortino_ratio?.toFixed(2)}
+                color={data.results.sortino_ratio > 1 ? 'text-up' : 'text-text-secondary'} />
+              <MetricCard label="Max Drawdown" value={`${data.results.max_drawdown?.toFixed(2)}%`}
+                color={data.results.max_drawdown > -20 ? 'text-up' : 'text-down'} />
+              <MetricCard label="Volatility" value={`${data.results.volatility?.toFixed(2)}%`} />
+              <MetricCard label="Calmar" value={data.results.calmar_ratio?.toFixed(2)} />
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div>
+            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Strategy Comparison</p>
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical">
+                  <XAxis type="number" stroke="#6B7280" tick={{ fontSize: 10, fill: '#6B7280' }} />
+                  <YAxis type="category" dataKey="name" stroke="#6B7280" tick={{ fontSize: 10, fill: '#9CA3AF' }} width={70} />
+                  <Tooltip contentStyle={{ backgroundColor: '#171A20', border: '1px solid #2A2D35', borderRadius: 6, fontSize: 12 }} />
+                  <Bar dataKey="value" radius={[0, 3, 3, 0]} barSize={16}>
+                    {chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
       ) : (
-        <div className="text-gray-500 text-center py-12">No backtest data available</div>
+        <div className="text-text-muted text-xs text-center py-16">No data</div>
       )}
     </div>
   )

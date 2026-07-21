@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTheme } from '../ThemeContext'
 import CompanySelector from './CompanySelector'
 import Watchlist from './Watchlist'
@@ -10,68 +11,59 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'predict', label: 'Predict', icon: '🤖' },
-  { id: 'backtest', label: 'Backtest', icon: '📈' },
-  { id: 'portfolio', label: 'Portfolio', icon: '💼' },
-  { id: 'signals', label: 'Signals', icon: '📡' },
+  { id: 'dashboard', label: 'Overview', icon: '◫' },
+  { id: 'predict', label: 'Predict', icon: '◉' },
+  { id: 'backtest', label: 'Backtest', icon: '⊞' },
+  { id: 'signals', label: 'Signals', icon: '◎' },
+  { id: 'portfolio', label: 'Portfolio', icon: '▤' },
 ]
 
 export default function Sidebar({ onSelect, currentTicker, activeView, onViewChange }: SidebarProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-
   return (
-    <aside className={`w-64 min-h-screen border-r flex flex-col ${
-      isDark ? 'bg-dark-card border-dark-border' : 'bg-white border-gray-200'
-    }`}>
-      {/* Logo */}
-      <div className={`p-4 border-b ${isDark ? 'border-dark-border' : 'border-gray-200'}`}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-stock-blue rounded-lg flex items-center justify-center">
-            <span className="text-lg">📈</span>
-          </div>
-          <div>
-            <h1 className="font-bold text-sm">StockPredict</h1>
-            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>ML Trading Platform</p>
-          </div>
+    <aside className="w-56 h-screen bg-surface-1 border-r border-border flex flex-col shrink-0">
+      {/* Brand */}
+      <div className="h-12 border-b border-border flex items-center px-4 gap-2.5 shrink-0">
+        <div className="w-6 h-6 rounded bg-accent flex items-center justify-center">
+          <span className="text-white text-xs font-bold">S</span>
+        </div>
+        <div>
+          <span className="text-sm font-semibold text-text-primary tracking-tight">StockPredict</span>
         </div>
       </div>
 
       {/* Company Selector */}
-      <div className="p-3">
+      <div className="p-3 border-b border-border">
         <CompanySelector onSelect={onSelect} currentTicker={currentTicker} />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2">
-        <p className={`text-xs font-medium mb-2 px-3 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>NAVIGATION</p>
+      <nav className="p-2 space-y-0.5">
         {NAV_ITEMS.map(item => (
           <button
             key={item.id}
             onClick={() => onViewChange(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1 ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors ${
               activeView === item.id
-                ? 'bg-stock-blue/20 text-stock-blue'
-                : isDark ? 'text-gray-400 hover:text-white hover:bg-dark-bg' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                ? 'bg-accent/10 text-accent font-medium'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-3'
             }`}
           >
-            <span className="text-lg">{item.icon}</span>
+            <span className="text-xs w-4 text-center opacity-60">{item.icon}</span>
             {item.label}
           </button>
         ))}
       </nav>
 
       {/* Watchlist */}
-      <div className="p-3">
+      <div className="flex-1 overflow-y-auto p-3 border-t border-border">
         <Watchlist onSelect={onSelect} currentTicker={currentTicker} />
       </div>
 
-      {/* Status */}
-      <div className={`p-4 border-t ${isDark ? 'border-dark-border' : 'border-gray-200'}`}>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="w-2 h-2 bg-stock-green rounded-full pulse-live"></span>
-          <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>Market Open</span>
+      {/* Footer */}
+      <div className="p-3 border-t border-border">
+        <div className="flex items-center gap-1.5 text-xxs text-text-muted">
+          <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot" />
+          Connected
         </div>
       </div>
     </aside>

@@ -6,6 +6,7 @@ import PredictionPanel from './components/PredictionPanel'
 import SignalsPanel from './components/SignalsPanel'
 import BacktestPanel from './components/BacktestPanel'
 import StockChart from './components/StockChart'
+import CompanyInfo from './components/CompanyInfo'
 
 function AppContent() {
   const [ticker, setTicker] = useState<string>('AAPL')
@@ -19,18 +20,26 @@ function AppContent() {
         return <Dashboard ticker={ticker} />
       case 'predict':
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PredictionPanel ticker={ticker} />
-            <StockChart ticker={ticker} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2">
+              <StockChart ticker={ticker} />
+            </div>
+            <div>
+              <PredictionPanel ticker={ticker} />
+            </div>
           </div>
         )
       case 'backtest':
         return <BacktestPanel ticker={ticker} />
       case 'signals':
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SignalsPanel ticker={ticker} />
-            <StockChart ticker={ticker} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2">
+              <StockChart ticker={ticker} />
+            </div>
+            <div>
+              <SignalsPanel ticker={ticker} />
+            </div>
           </div>
         )
       case 'portfolio':
@@ -41,42 +50,35 @@ function AppContent() {
   }
 
   return (
-    <div className={`flex min-h-screen transition-colors duration-300 ${
-      isDark ? 'bg-dark-bg' : 'bg-gray-50'
-    }`}>
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-surface-0">
       <Sidebar
         onSelect={setTicker}
         currentTicker={ticker}
         activeView={activeView}
         onViewChange={setActiveView}
       />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <header className={`flex items-center justify-between px-6 py-3 border-b ${
-          isDark ? 'bg-dark-card/80 border-dark-border' : 'bg-white/80 border-gray-200'
-        }`}>
-          <div>
-            <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {ticker}
-            </h2>
+        <header className="h-12 border-b border-border flex items-center justify-between px-4 bg-surface-1 shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-text-primary">{ticker}</h2>
+            <CompanyInfo ticker={ticker} compact />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot" />
+              <span className="text-xxs text-text-muted">Market Data</span>
+            </div>
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg transition-colors ${
-                isDark ? 'bg-dark-bg hover:bg-dark-border' : 'bg-gray-100 hover:bg-gray-200'
-              }`}
+              className="p-1.5 rounded hover:bg-surface-3 text-text-muted hover:text-text-secondary transition-colors"
             >
-              {isDark ? '☀️' : '🌙'}
+              {isDark ? '☀' : '☾'}
             </button>
           </div>
         </header>
-
         {/* Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-4 overflow-y-auto">
           {renderView()}
         </main>
       </div>
@@ -86,8 +88,6 @@ function AppContent() {
 
 function PortfolioView() {
   const [portfolio, setPortfolio] = useState<any>(null)
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
 
   useState(() => {
     fetch('/api/portfolio')
@@ -97,32 +97,25 @@ function PortfolioView() {
   })
 
   return (
-    <div className="space-y-6">
-      <div className={`rounded-xl border p-6 ${isDark ? 'bg-dark-card border-dark-border' : 'bg-white border-gray-200'}`}>
-        <h3 className="text-lg font-bold mb-4">💼 Portfolio Overview</h3>
+    <div className="space-y-4">
+      <div className="bg-surface-1 border border-border rounded-lg p-5">
+        <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">Portfolio Overview</h3>
         {portfolio ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className={`p-4 rounded-lg ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
-              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Total Value</p>
-              <p className="text-xl font-bold">${portfolio.total_portfolio_value?.toLocaleString()}</p>
-            </div>
-            <div className={`p-4 rounded-lg ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
-              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Cash</p>
-              <p className="text-xl font-bold">${portfolio.current_cash?.toLocaleString()}</p>
-            </div>
-            <div className={`p-4 rounded-lg ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
-              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Invested</p>
-              <p className="text-xl font-bold">${portfolio.total_invested?.toLocaleString()}</p>
-            </div>
-            <div className={`p-4 rounded-lg ${isDark ? 'bg-dark-bg' : 'bg-gray-50'}`}>
-              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Return</p>
-              <p className={`text-xl font-bold ${portfolio.total_return >= 0 ? 'text-stock-green' : 'text-stock-red'}`}>
-                {portfolio.total_return >= 0 ? '+' : ''}{portfolio.total_return?.toFixed(2)}%
-              </p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Total Value', value: `$${portfolio.total_portfolio_value?.toLocaleString()}`, color: 'text-text-primary' },
+              { label: 'Cash', value: `$${portfolio.current_cash?.toLocaleString()}`, color: 'text-text-primary' },
+              { label: 'Invested', value: `$${portfolio.total_invested?.toLocaleString()}`, color: 'text-text-secondary' },
+              { label: 'Return', value: `${portfolio.total_return >= 0 ? '+' : ''}${portfolio.total_return?.toFixed(2)}%`, color: portfolio.total_return >= 0 ? 'text-up' : 'text-down' },
+            ].map((item, i) => (
+              <div key={i} className="bg-surface-2 rounded-lg p-3">
+                <p className="text-xxs text-text-muted uppercase tracking-wider mb-1">{item.label}</p>
+                <p className={`text-lg font-semibold tabular-nums ${item.color}`}>{item.value}</p>
+              </div>
+            ))}
           </div>
         ) : (
-          <p className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Loading portfolio...</p>
+          <p className="text-sm text-text-muted py-6 text-center">Loading portfolio...</p>
         )}
       </div>
     </div>

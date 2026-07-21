@@ -9,15 +9,12 @@ interface DashboardProps {
 
 export default function Dashboard({ ticker }: DashboardProps) {
   return (
-    <div className="space-y-6">
-      {/* Top Row: Company + Prediction + Signals */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <CompanyInfo ticker={ticker} />
         <PredictionPanel ticker={ticker} />
         <SignalsPanel ticker={ticker} />
       </div>
-
-      {/* Full Width Chart */}
       <StockChart ticker={ticker} />
     </div>
   )
