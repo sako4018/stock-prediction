@@ -58,7 +58,7 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">Watchlist</span>
+        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">Watchlist</span>
         <button onClick={addSymbol} className="text-xxs text-accent hover:text-accent-hover">+ Add</button>
       </div>
       <div className="space-y-px">
@@ -74,16 +74,16 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
                 isActive ? 'bg-accent/10' : 'hover:bg-surface-3'
               }`}
             >
-              <span className={`text-xs font-medium ${isActive ? 'text-accent' : 'text-text-primary'}`}>{ticker}</span>
+              <span className={`text-xs font-medium ${isActive ? 'text-accent' : 'text-label'}`}>{ticker}</span>
               {item?.price ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-secondary tabular-nums">${item.price.toFixed(2)}</span>
+                  <span className="text-xs text-label-dim tabular-nums">${item.price.toFixed(2)}</span>
                   <span className={`text-xxs tabular-nums ${isPositive ? 'text-up' : 'text-down'}`}>
                     {isPositive ? '+' : ''}{item.changePercent?.toFixed(2)}%
                   </span>
                 </div>
               ) : (
-                <span className="text-xxs text-text-muted">{loading ? '—' : '—'}</span>
+                <span className="text-xxs text-label-muted">{loading ? '—' : '—'}</span>
               )}
             </button>
           )

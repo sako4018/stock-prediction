@@ -41,11 +41,11 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
   const isBuy = prediction?.signal === 'BUY'
 
   return (
-    <div className="bg-surface-1 border border-border rounded-lg p-4">
+    <div className="bg-surface-1 border border-frame rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">ML Prediction</span>
+        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">ML Prediction</span>
         <button onClick={fetchPrediction} disabled={loading}
-          className="text-xxs text-accent hover:text-accent-hover disabled:text-text-muted">
+          className="text-xxs text-accent hover:text-accent-hover disabled:text-label-muted">
           {loading ? '...' : 'Refresh'}
         </button>
       </div>
@@ -62,15 +62,15 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
 
           {/* Price */}
           <div>
-            <p className="text-xxs text-text-muted mb-0.5">Current Price</p>
-            <p className="text-xl font-bold tabular-nums text-text-primary">${prediction.current_price.toFixed(2)}</p>
+            <p className="text-xxs text-label-muted mb-0.5">Current Price</p>
+            <p className="text-xl font-bold tabular-nums text-label">${prediction.current_price.toFixed(2)}</p>
           </div>
 
           {/* Confidence */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xxs text-text-muted">Confidence</p>
-              <p className="text-xxs tabular-nums text-text-secondary">{prediction.confidence.toFixed(1)}%</p>
+              <p className="text-xxs text-label-muted">Confidence</p>
+              <p className="text-xxs tabular-nums text-label-dim">{prediction.confidence.toFixed(1)}%</p>
             </div>
             <div className="h-1 bg-surface-3 rounded-full overflow-hidden">
               <div
@@ -82,18 +82,18 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
 
           {/* Model Output */}
           <div className="bg-surface-2 rounded p-2.5">
-            <p className="text-xxs text-text-muted mb-0.5">Model Output</p>
-            <p className="text-xs font-mono text-text-secondary tabular-nums">{prediction.prediction.toFixed(4)}</p>
+            <p className="text-xxs text-label-muted mb-0.5">Model Output</p>
+            <p className="text-xs font-mono text-label-dim tabular-nums">{prediction.prediction.toFixed(4)}</p>
           </div>
         </div>
       ) : (
-        <div className="text-text-muted text-xs text-center py-8">
+        <div className="text-label-muted text-xs text-center py-8">
           {loading ? 'Analyzing...' : 'No prediction'}
         </div>
       )}
 
       <button onClick={trainModel} disabled={loading}
-        className="w-full mt-4 py-2 bg-surface-3 hover:bg-surface-4 border border-border rounded text-xs font-medium text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50">
+        className="w-full mt-4 py-2 bg-surface-3 hover:bg-surface-4 border border-frame rounded text-xs font-medium text-label-dim hover:text-label transition-colors disabled:opacity-50">
         {loading ? 'Training...' : 'Retrain Model'}
       </button>
     </div>

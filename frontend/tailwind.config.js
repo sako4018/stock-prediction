@@ -7,30 +7,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Professional Trading Platform Palette
         'accent': '#3B82F6',
         'accent-hover': '#2563EB',
         'up': '#22C55E',
-        'up-muted': '#166534',
         'down': '#EF4444',
-        'down-muted': '#991B1B',
-        'surface': {
-          0: '#0B0D11',
-          1: '#111318',
-          2: '#171A20',
-          3: '#1E2128',
-          4: '#252830',
-          5: '#2C3038',
-        },
-        'border': {
-          DEFAULT: '#2A2D35',
-          light: '#353840',
-        },
-        'text': {
-          primary: '#E8EAED',
-          secondary: '#9CA3AF',
-          muted: '#6B7280',
-        }
+        'surface-0': '#0B0D11',
+        'surface-1': '#111318',
+        'surface-2': '#171A20',
+        'surface-3': '#1E2128',
+        'surface-4': '#252830',
+        'surface-5': '#2C3038',
+        'frame': '#2A2D35',
+        'frame-light': '#353840',
+        'label': '#E8EAED',
+        'label-dim': '#9CA3AF',
+        'label-muted': '#6B7280',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],

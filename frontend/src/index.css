@@ -17,16 +17,13 @@ body {
   color: #E8EAED;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #2C3038; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #353840; }
 
-/* Selection */
 ::selection { background: rgba(59, 130, 246, 0.3); }
 
-/* Utility animations */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -39,11 +36,8 @@ body {
 
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
 .animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
-
-/* Number font */
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* Focus ring */
 input:focus, button:focus-visible {
   outline: 1px solid #3B82F6;
   outline-offset: 1px;

@@ -52,7 +52,7 @@ export default function StockChart({ ticker }: StockChartProps) {
   const periods = ['1mo', '3mo', '6mo', '1y', '2y', '5y']
 
   if (loading) {
-    return <div className="bg-surface-1 border border-border rounded-lg h-80 animate-pulse" />
+    return <div className="bg-surface-1 border border-frame rounded-lg h-80 animate-pulse" />
   }
 
   const W = 900, H = 380
@@ -64,23 +64,23 @@ export default function StockChart({ ticker }: StockChartProps) {
   const scaleX = (i: number) => pad.l + (i / data.length) * iW
 
   return (
-    <div className="bg-surface-1 border border-border rounded-lg p-4">
+    <div className="bg-surface-1 border border-frame rounded-lg p-4">
       {/* Controls */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
           {periods.map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className={`px-2 py-1 rounded text-xxs font-medium transition-colors ${
-                period === p ? 'bg-accent text-white' : 'text-text-muted hover:text-text-secondary hover:bg-surface-3'
+                period === p ? 'bg-accent text-white' : 'text-label-muted hover:text-label-dim hover:bg-surface-3'
               }`}>{p}</button>
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex rounded overflow-hidden border border-border">
+          <div className="flex rounded overflow-hidden border border-frame">
             {(['candle', 'area'] as const).map(t => (
               <button key={t} onClick={() => setChartType(t)}
                 className={`px-2.5 py-1 text-xxs font-medium transition-colors ${
-                  chartType === t ? 'bg-accent text-white' : 'text-text-muted hover:text-text-secondary bg-surface-3'
+                  chartType === t ? 'bg-accent text-white' : 'text-label-muted hover:text-label-dim bg-surface-3'
                 }`}>{t === 'candle' ? 'Candle' : 'Area'}</button>
             ))}
           </div>
@@ -93,8 +93,8 @@ export default function StockChart({ ticker }: StockChartProps) {
               <input type="checkbox"
                 checked={(showIndicators as any)[key]}
                 onChange={(e) => setShowIndicators({ ...showIndicators, [key]: e.target.checked })}
-                className="w-3 h-3 rounded border-border accent-accent" />
-              <span className="text-xxs text-text-muted">{label}</span>
+                className="w-3 h-3 rounded border-frame accent-accent" />
+              <span className="text-xxs text-label-muted">{label}</span>
             </label>
           ))}
         </div>
@@ -187,7 +187,7 @@ export default function StockChart({ ticker }: StockChartProps) {
       {/* RSI */}
       <div className="mt-2">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xxs text-text-muted">RSI</span>
+          <span className="text-xxs text-label-muted">RSI</span>
         </div>
         <svg width={W} height={60}>
           {[30, 50, 70].map(lvl => {

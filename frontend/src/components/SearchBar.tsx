@@ -21,7 +21,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Search ticker (AAPL, TSLA, GOOGL...)"
-        className="bg-dark-bg border border-dark-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-stock-blue transition-colors w-64"
+        className="bg-surface-0 border border-frame rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-stock-blue transition-colors w-64"
       />
       <button
         type="submit"

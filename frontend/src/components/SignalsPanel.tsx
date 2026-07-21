@@ -37,7 +37,7 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
   const getSignalColor = (signal: string) => {
     if (signal.includes('BUY') || signal.includes('OVERSOLD') || signal.includes('BULLISH')) return 'text-up'
     if (signal.includes('SELL') || signal.includes('OVERBOUGHT') || signal.includes('BEARISH')) return 'text-down'
-    return 'text-text-muted'
+    return 'text-label-muted'
   }
 
   const getSignalBg = (signal: string) => {
@@ -47,17 +47,17 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
   }
 
   return (
-    <div className="bg-surface-1 border border-border rounded-lg p-4">
+    <div className="bg-surface-1 border border-frame rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">Technical Signals</span>
+        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">Technical Signals</span>
         <button onClick={fetchSignals} disabled={loading}
-          className="text-xxs text-accent hover:text-accent-hover disabled:text-text-muted">
+          className="text-xxs text-accent hover:text-accent-hover disabled:text-label-muted">
           {loading ? '...' : 'Refresh'}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-text-muted text-xs text-center py-8">Loading...</div>
+        <div className="text-label-muted text-xs text-center py-8">Loading...</div>
       ) : signals ? (
         <div className="space-y-3">
           {/* Recommendation */}
@@ -76,10 +76,10 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
             { name: 'ATR', value: `${signals.indicators.atr.percent.toFixed(1)}%`, signal: signals.indicators.atr.signal },
             { name: 'Bollinger', value: signals.indicators.bollinger.signal, signal: signals.indicators.bollinger.signal },
           ].map((ind, i) => (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-              <span className="text-xs text-text-muted">{ind.name}</span>
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-frame last:border-0">
+              <span className="text-xs text-label-muted">{ind.name}</span>
               <div className="text-right">
-                <span className="text-xs text-text-secondary tabular-nums mr-2">{ind.value}</span>
+                <span className="text-xs text-label-dim tabular-nums mr-2">{ind.value}</span>
                 <span className={`text-xxs font-medium ${getSignalColor(ind.signal)}`}>
                   {ind.signal.split(' ')[0]}
                 </span>
@@ -88,7 +88,7 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
           ))}
         </div>
       ) : (
-        <div className="text-text-muted text-xs text-center py-8">No data</div>
+        <div className="text-label-muted text-xs text-center py-8">No data</div>
       )}
     </div>
   )

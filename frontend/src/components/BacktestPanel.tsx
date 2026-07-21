@@ -49,31 +49,31 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
     { name: 'Buy & Hold', value: data.results.buy_and_hold_return, color: '#3B82F6' },
   ] : []
 
-  const MetricCard = ({ label, value, color = 'text-text-primary', sub }: { label: string; value: string; color?: string; sub?: string }) => (
+  const MetricCard = ({ label, value, color = 'text-label', sub }: { label: string; value: string; color?: string; sub?: string }) => (
     <div className="bg-surface-2 rounded p-3">
-      <p className="text-xxs text-text-muted uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xxs text-label-muted uppercase tracking-wider mb-1">{label}</p>
       <p className={`text-lg font-semibold tabular-nums ${color}`}>{value}</p>
-      {sub && <p className="text-xxs text-text-muted mt-0.5">{sub}</p>}
+      {sub && <p className="text-xxs text-label-muted mt-0.5">{sub}</p>}
     </div>
   )
 
   return (
-    <div className="bg-surface-1 border border-border rounded-lg p-5">
+    <div className="bg-surface-1 border border-frame rounded-lg p-5">
       <div className="flex items-center justify-between mb-5">
-        <span className="text-xxs font-medium text-text-muted uppercase tracking-wider">Backtest Results</span>
+        <span className="text-xxs font-medium text-label-muted uppercase tracking-wider">Backtest Results</span>
         <button onClick={runBacktest} disabled={loading}
-          className="text-xxs text-accent hover:text-accent-hover disabled:text-text-muted">
+          className="text-xxs text-accent hover:text-accent-hover disabled:text-label-muted">
           {loading ? 'Running...' : 'Run Again'}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-text-muted text-xs text-center py-16">Running simulation...</div>
+        <div className="text-label-muted text-xs text-center py-16">Running simulation...</div>
       ) : data ? (
         <div className="space-y-5">
           {/* Performance Metrics */}
           <div>
-            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Accuracy Metrics</p>
+            <p className="text-xxs text-label-muted uppercase tracking-wider mb-2">Accuracy Metrics</p>
             <div className="grid grid-cols-4 gap-2">
               <MetricCard label="Accuracy" value={`${data.results.accuracy?.toFixed(1)}%`} />
               <MetricCard label="Precision" value={`${data.results.precision?.toFixed(1)}%`} />
@@ -84,7 +84,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
 
           {/* Trading Results */}
           <div>
-            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Trading Performance</p>
+            <p className="text-xxs text-label-muted uppercase tracking-wider mb-2">Trading Performance</p>
             <div className="grid grid-cols-4 gap-2">
               <MetricCard label="Total Return" value={`${data.results.total_return >= 0 ? '+' : ''}${data.results.total_return?.toFixed(2)}%`}
                 color={data.results.total_return >= 0 ? 'text-up' : 'text-down'} />
@@ -97,12 +97,12 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
 
           {/* Risk Metrics */}
           <div>
-            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Risk Metrics</p>
+            <p className="text-xxs text-label-muted uppercase tracking-wider mb-2">Risk Metrics</p>
             <div className="grid grid-cols-5 gap-2">
               <MetricCard label="Sharpe" value={data.results.sharpe_ratio?.toFixed(2)}
-                color={data.results.sharpe_ratio > 1 ? 'text-up' : data.results.sharpe_ratio > 0 ? 'text-text-secondary' : 'text-down'} />
+                color={data.results.sharpe_ratio > 1 ? 'text-up' : data.results.sharpe_ratio > 0 ? 'text-label-dim' : 'text-down'} />
               <MetricCard label="Sortino" value={data.results.sortino_ratio?.toFixed(2)}
-                color={data.results.sortino_ratio > 1 ? 'text-up' : 'text-text-secondary'} />
+                color={data.results.sortino_ratio > 1 ? 'text-up' : 'text-label-dim'} />
               <MetricCard label="Max Drawdown" value={`${data.results.max_drawdown?.toFixed(2)}%`}
                 color={data.results.max_drawdown > -20 ? 'text-up' : 'text-down'} />
               <MetricCard label="Volatility" value={`${data.results.volatility?.toFixed(2)}%`} />
@@ -112,7 +112,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
 
           {/* Chart */}
           <div>
-            <p className="text-xxs text-text-muted uppercase tracking-wider mb-2">Strategy Comparison</p>
+            <p className="text-xxs text-label-muted uppercase tracking-wider mb-2">Strategy Comparison</p>
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} layout="vertical">
@@ -128,7 +128,7 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
           </div>
         </div>
       ) : (
-        <div className="text-text-muted text-xs text-center py-16">No data</div>
+        <div className="text-label-muted text-xs text-center py-16">No data</div>
       )}
     </div>
   )
