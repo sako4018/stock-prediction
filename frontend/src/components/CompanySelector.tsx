@@ -33,8 +33,11 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setIsOpen(false)
     }
-    function handleScroll() {
-      setIsOpen(false)
+    function handleScroll(e: Event) {
+      // Only close if scroll happens OUTSIDE the dropdown
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleKeyDown)
