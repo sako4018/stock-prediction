@@ -37,6 +37,7 @@ from sentiment import get_news_sentiment
 from combined_signal import combine_signals
 from multi_timeframe import multi_timeframe_analysis
 from sector_analysis import sector_correlation_matrix, get_sector_summary, find_uncorrelated_pairs, get_all_sectors
+from alerts import AlertManager
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -821,6 +822,74 @@ def get_portfolio_history(limit: int = 50):
     """История на транзакциите."""
     try:
         return {"history": portfolio.get_history(limit)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== ALERT ENDPOINTS ====================
+
+alert_manager = AlertManager()
+
+
+class AlertRequest(BaseModel):
+    alert_type: str
+    value: float
+    note: str = ''
+
+
+@app.get("/api/alerts")
+def get_alerts(ticker: str = None):
+    """Връща алерти."""
+    try:
+        alerts = alert_manager.get_alerts(ticker=ticker, active_only=False)
+        return {"alerts": alerts, "stats": alert_manager.get_stats()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/alerts/{ticker}")
+def create_alert(ticker: str, request: AlertRequest):
+    """Създава нов алерт."""
+    try:
+        condition_map = {
+            'price_above': f'Price > ${request.value}',
+            'price_below': f'Price < ${request.value}',
+            'rsi_above': f'RSI > {request.value}',
+            'rsi_below': f'RSI < {request.value}',
+        }
+        condition = condition_map.get(request.alert_type, request.alert_type)
+        alert = alert_manager.add_alert(
+            ticker=ticker,
+            alert_type=request.alert_type,
+            condition=condition,
+            value=request.value,
+            note=request.note
+        )
+        return alert
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/alerts/{alert_id}")
+def delete_alert(alert_id: str):
+    """Премахва алерт."""
+    try:
+        success = alert_manager.remove_alert(alert_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        return {"message": "Alert deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/alerts/check")
+def check_alerts():
+    """Проверява всички алерти за trigger."""
+    try:
+        triggered = alert_manager.check_alerts()
+        return {"triggered": triggered, "count": len(triggered)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
