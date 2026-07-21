@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { POPULAR_STOCKS, SECTORS, searchCompanies } from '../data/companies'
+import { createPortal } from 'react-dom'
 
 interface CompanySelectorProps {
   onSelect: (ticker: string) => void
@@ -10,6 +11,8 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeSector, setActiveSector] = useState('All')
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 })
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const filtered = query
@@ -20,7 +23,10 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false)
       }
     }
@@ -28,12 +34,25 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const openDropdown = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 320)
+      })
+    }
+    setIsOpen(!isOpen)
+  }
+
   const currentCompany = POPULAR_STOCKS.find(c => c.ticker === currentTicker)
 
   return (
-    <div className="relative z-[100]" ref={dropdownRef}>
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={openDropdown}
         className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-surface-3 border border-frame hover:border-frame-light transition-colors text-left"
       >
         <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
@@ -48,16 +67,26 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
         </svg>
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-80 bg-surface-2 border border-frame rounded-lg shadow-2xl z-[100] overflow-hidden animate-fade-in">
+      {isOpen && createPortal(
+        <div
+          ref={dropdownRef}
+          className="bg-surface-2 border border-frame rounded-lg shadow-2xl overflow-hidden animate-fade-in"
+          style={{
+            position: 'fixed',
+            top: dropdownPos.top,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
+            zIndex: 9999
+          }}
+        >
           {/* Search */}
           <div className="p-2 border-b border-frame">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search..."
-              className="w-full px-2.5 py-1.5 bg-surface-3 border border-frame rounded text-xs text-label placeholder-text-muted focus:outline-none focus:border-accent"
+              placeholder="Search company or ticker..."
+              className="w-full px-2.5 py-1.5 bg-surface-3 border border-frame rounded text-xs text-label placeholder-label-muted focus:outline-none focus:border-accent"
               autoFocus
             />
           </div>
@@ -79,8 +108,8 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
             ))}
           </div>
 
-          {/* List */}
-          <div className="max-h-64 overflow-y-auto">
+          {/* Company List */}
+          <div className="max-h-72 overflow-y-auto">
             {filtered.map(company => (
               <button
                 key={company.ticker}
@@ -124,8 +153,9 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
