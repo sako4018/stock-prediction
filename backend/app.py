@@ -36,6 +36,7 @@ from portfolio import PortfolioTracker
 from sentiment import get_news_sentiment
 from combined_signal import combine_signals
 from multi_timeframe import multi_timeframe_analysis
+from sector_analysis import sector_correlation_matrix, get_sector_summary, find_uncorrelated_pairs, get_all_sectors
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -397,6 +398,41 @@ def get_multi_timeframe(ticker: str):
     try:
         result = multi_timeframe_analysis(ticker)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sectors")
+def list_sectors():
+    """Връща всички налични сектори."""
+    return {"sectors": get_all_sectors()}
+
+
+@app.get("/api/sectors/{sector}/correlation")
+def get_sector_correlation(sector: str, period: str = '1y'):
+    """Корелационна матрица за сектор."""
+    try:
+        result = sector_correlation_matrix(sector, period)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sectors/summary")
+def get_sectors_summary(period: str = '1y'):
+    """Обобщение по всички сектори."""
+    try:
+        return {"summary": get_sector_summary(period)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sectors/diversification")
+def get_diversification(sector: str = None, max_corr: float = 0.3):
+    """Намира pairs с ниска корелация за диверсификация."""
+    try:
+        pairs = find_uncorrelated_pairs(sector, max_correlation=max_corr)
+        return {"pairs": pairs, "count": len(pairs)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
