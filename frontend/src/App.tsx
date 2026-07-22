@@ -73,40 +73,57 @@ function AppContent() {
     }
   }
 
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg-app)' }}>
-      <Sidebar
-        onSelect={setTicker}
-        currentTicker={ticker}
-        activeView={activeView}
-        onViewChange={setActiveView}
-      />
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar — hidden on mobile, visible on lg+ */}
+      <div className={`fixed lg:static z-40 lg:z-auto transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <Sidebar
+          onSelect={(t) => { setTicker(t); setSidebarOpen(false) }}
+          currentTicker={ticker}
+          activeView={activeView}
+          onViewChange={(v) => { setActiveView(v); setSidebarOpen(false) }}
+        />
+      </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header — editorial: large ticker, minimal controls */}
-        <div className="h-16 flex items-center justify-between px-8 shrink-0" style={{
+        {/* Header */}
+        <div className="h-14 lg:h-16 flex items-center justify-between px-4 lg:px-8 shrink-0" style={{
           background: 'var(--bg-header)',
           borderBottom: '1px solid rgb(var(--color-line))',
         }}>
-          <div className="flex items-center gap-6">
-            <h1 className="text-4xl font-bold tracking-tight" style={{
+          <div className="flex items-center gap-3 lg:gap-6">
+            {/* Mobile hamburger */}
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded"
+              style={{ color: 'rgb(var(--color-txt))' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12h18M3 6h18M3 18h18" />
+              </svg>
+            </button>
+            <h1 className="text-2xl lg:text-4xl font-bold tracking-tight" style={{
               fontFamily: '"Space Grotesk", system-ui, sans-serif',
               color: 'rgb(var(--color-txt))',
               letterSpacing: '-0.02em',
             }}>{ticker}</h1>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded" style={{
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded" style={{
               background: 'rgb(var(--color-up) / 0.08)',
               border: '1px solid rgb(var(--color-up) / 0.15)',
             }}>
               <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot" />
               <span className="text-xxs font-medium text-up" style={{ fontFamily: '"JetBrains Mono", monospace' }}>LIVE</span>
             </div>
-            <div className="w-px h-8" style={{ background: 'rgb(var(--color-line))' }} />
-            <HeroPrice ticker={ticker} />
+            <div className="hidden sm:block w-px h-8" style={{ background: 'rgb(var(--color-line))' }} />
+            <div className="hidden sm:block"><HeroPrice ticker={ticker} /></div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="px-2.5 py-1 rounded text-xxs font-semibold" style={{
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="hidden sm:block px-2.5 py-1 rounded text-xxs font-semibold" style={{
               fontFamily: '"Space Grotesk", system-ui, sans-serif',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
@@ -141,7 +158,7 @@ function AppContent() {
         </div>
 
         <TickerTape />
-        <main className="flex-1 p-8 overflow-y-auto" style={{ background: 'var(--bg-app)' }}>
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto" style={{ background: 'var(--bg-app)' }}>
           {renderView()}
         </main>
       </div>
