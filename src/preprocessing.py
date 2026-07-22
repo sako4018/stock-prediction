@@ -126,10 +126,11 @@ class StockDataPreprocessor:
         df['VWAP'] = (df['Volume'] * (df['High'] + df['Low'] + df['Close']) / 3).cumsum() / df['Volume'].cumsum()
 
         # 15. MFI (Money Flow Index) - RSI с обем
+        mfi_w = min(14, max(5, n // 3))
         typical_price = (df['High'] + df['Low'] + df['Close']) / 3
         money_flow = typical_price * df['Volume']
-        positive_flow = money_flow.where(typical_price > typical_price.shift(), 0).rolling(14).sum()
-        negative_flow = money_flow.where(typical_price < typical_price.shift(), 0).rolling(14).sum()
+        positive_flow = money_flow.where(typical_price > typical_price.shift(), 0).rolling(mfi_w).sum()
+        negative_flow = money_flow.where(typical_price < typical_price.shift(), 0).rolling(mfi_w).sum()
         mfi_ratio = positive_flow / negative_flow
         df['MFI'] = 100 - (100 / (1 + mfi_ratio))
 
@@ -166,15 +167,20 @@ class StockDataPreprocessor:
         # RSI divergence from price
         df['RSI_Divergence'] = df['Close'].pct_change(5) - df['RSI'].pct_change(5)
 
-        # 21. Rate of Change (ROC)
-        for period in [5, 10, 20]:
+        # 21. Rate of Change (ROC) — адаптивни периоди за кратък data frame
+        roc_periods = [min(5, max(2, n // 5)), min(10, max(3, n // 3)), min(20, max(5, n // 2))]
+        roc_periods = sorted(set(p for p in roc_periods if p >= 2))
+        for period in roc_periods:
             df[f'ROC_{period}'] = df['Close'].pct_change(period) * 100
 
         # 22. Exponential weighted moving stats
-        df['EWMA_Volatility'] = df['Price_Change'].ewm(span=20).std() * np.sqrt(252)
+        ewma_span = min(20, max(5, n // 3))
+        df['EWMA_Volatility'] = df['Price_Change'].ewm(span=ewma_span).std() * np.sqrt(252)
 
-        # Премахване на редове с NaN стойности (от изчисленията)
-        df = df.dropna()
+        # Запълване на NaN стойности — запазваме всички дати
+        # Оригиналните цени (Open/High/Low/Close/Volume) никога нямат NaN
+        # Само индикаторите имат NaN в началото заради rolling windows
+        df = df.ffill().bfill()
 
         self.data = df
 

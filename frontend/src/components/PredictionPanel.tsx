@@ -43,9 +43,15 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
   }
 
   const getDirectionBg = (dir: string) => {
-    if (dir === 'UP') return 'bg-up/8 border-up/20'
-    if (dir === 'DOWN') return 'bg-down/8 border-down/20'
+    if (dir === 'UP') return 'border-up/20'
+    if (dir === 'DOWN') return 'border-down/20'
     return 'bg-surface-overlay border-line'
+  }
+
+  const getDirectionBgStyle = (dir: string) => {
+    if (dir === 'UP') return { background: 'rgb(var(--color-up) / 0.06)' }
+    if (dir === 'DOWN') return { background: 'rgb(var(--color-down) / 0.06)' }
+    return {}
   }
 
   const getVoteIcon = (vote: string) => {
@@ -77,7 +83,8 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
           <div className="space-y-4">
 
             {/* Big Direction Display */}
-            <div className={`text-center py-5 rounded-lg border ${getDirectionBg(data.direction)}`}>
+            <div className={`text-center py-5 rounded-lg border ${getDirectionBg(data.direction)}`}
+              style={getDirectionBgStyle(data.direction)}>
               <div className={`text-5xl font-bold mb-2 ${getDirectionColor(data.direction)}`}
                 style={{ fontFamily: '"JetBrains Mono", monospace' }}>
                 {data.direction === 'UP' ? '↑' : data.direction === 'DOWN' ? '↓' : '?'}

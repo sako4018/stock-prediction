@@ -47,10 +47,23 @@ class StockDataCollector:
         try:
             print(f"📊 Изтегляне на данни за {self.ticker}...")
 
-            # Изтегляне на данните от Yahoo Finance
+            # Опитваме с първоначалния interval
             self.data = self.stock.history(period=self.period, interval=self.interval)
 
-            if self.data.empty:
+            # Ако няма данни, опитваме с '1d' interval
+            if self.data is None or self.data.empty:
+                print(f"⚠️ Няма данни с interval={self.interval}, опитваме с 1d...")
+                self.data = self.stock.history(period=self.period, interval='1d')
+
+            # Ако пак няма данни, опитваме с по-дълъг период
+            if self.data is None or self.data.empty:
+                fallback_periods = {'1mo': '3mo', '3mo': '6mo', '6mo': '1y'}
+                fallback = fallback_periods.get(self.period)
+                if fallback:
+                    print(f"⚠️ Опитваме с period={fallback}...")
+                    self.data = self.stock.history(period=fallback, interval='1d')
+
+            if self.data is None or self.data.empty:
                 print(f"❌ Няма данни за {self.ticker}")
                 return None
 
