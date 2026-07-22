@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import FadeIn from './FadeIn'
+import { cachedFetch } from '../cache'
 
 interface SignalsPanelProps {
   ticker: string
@@ -112,8 +113,7 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
   const fetchSignals = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/stocks/${ticker}/signals`)
-      const data = await res.json()
+      const data = await cachedFetch(`/api/stocks/${ticker}/signals`)
       setSignals(data)
     } catch (err) { console.error(err) }
     setLoading(false)

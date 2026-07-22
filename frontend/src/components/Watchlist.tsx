@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import AnimatedNumber from './AnimatedNumber'
+import { cachedFetch } from '../cache'
 
 interface WatchlistProps {
   onSelect: (ticker: string) => void
@@ -34,8 +35,7 @@ export default function Watchlist({ onSelect, currentTicker, expanded = true }: 
     const newPrices: Record<string, WatchlistItem> = {}
     for (const ticker of watchlist) {
       try {
-        const res = await fetch(`/api/stocks/${ticker}`)
-        const data = await res.json()
+        const data = await cachedFetch(`/api/stocks/${ticker}`)
         if (data.price) {
           newPrices[ticker] = {
             ticker,

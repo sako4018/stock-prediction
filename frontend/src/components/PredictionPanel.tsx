@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import FadeIn from './FadeIn'
+import { cachedFetch } from '../cache'
 
 interface PredictionPanelProps {
   ticker: string
@@ -29,8 +30,7 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
   const fetchCombined = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/stocks/${ticker}/combined`)
-      const json = await res.json()
+      const json = await cachedFetch(`/api/stocks/${ticker}/combined`)
       const raw = json.combined
 
       // Normalize: old backend returns {final_signal, breakdown}, new returns {direction, voters}

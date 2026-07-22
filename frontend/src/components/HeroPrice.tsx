@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { cachedFetch } from '../cache'
 
 interface HeroPriceProps {
   ticker: string
@@ -61,8 +62,7 @@ export default function HeroPrice({ ticker }: HeroPriceProps) {
 
   const fetchPrice = async () => {
     try {
-      const res = await fetch(`/api/stocks/${ticker}`)
-      const json = await res.json()
+      const json = await cachedFetch(`/api/stocks/${ticker}`)
       if (json.price) {
         setData(json.price)
         setPulse(true)

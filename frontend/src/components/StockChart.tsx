@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../ThemeContext'
+import { cachedFetch } from '../cache'
 
 interface StockChartProps {
   ticker: string
@@ -51,8 +52,7 @@ export default function StockChart({ ticker }: StockChartProps) {
   const fetchHistory = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/stocks/${ticker}/history?period=${period}`)
-      const json = await res.json()
+      const json = await cachedFetch(`/api/stocks/${ticker}/history?period=${period}`)
       setData(json.data.map((d: any) => ({ ...d, Date: d.Date.split('T')[0] })))
     } catch (err) { console.error(err) }
     setLoading(false)

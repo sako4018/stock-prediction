@@ -152,12 +152,12 @@ function AppContent() {
 function PortfolioView() {
   const [portfolio, setPortfolio] = useState<any>(null)
 
-  useState(() => {
+  useEffect(() => {
     fetch('/api/portfolio')
       .then(r => r.json())
       .then(setPortfolio)
       .catch(console.error)
-  })
+  }, [])
 
   return (
     <div className="space-y-4">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { cachedFetch } from '../cache'
 
 interface TickerItem {
   ticker: string
@@ -23,8 +24,7 @@ export default function TickerTape() {
 
     for (const ticker of watchlist) {
       try {
-        const res = await fetch(`/api/stocks/${ticker}`)
-        const data = await res.json()
+        const data = await cachedFetch(`/api/stocks/${ticker}`)
         if (data.price) {
           results.push({
             ticker,

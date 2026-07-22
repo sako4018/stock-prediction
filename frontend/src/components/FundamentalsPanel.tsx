@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { cachedFetch } from '../cache'
 
 interface FundamentalsPanelProps {
   ticker: string
@@ -13,8 +14,7 @@ export default function FundamentalsPanel({ ticker }: FundamentalsPanelProps) {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/stocks/${ticker}/fundamentals`)
-      const json = await res.json()
+      const json = await cachedFetch(`/api/stocks/${ticker}/fundamentals`)
       setData(json)
     } catch (err) { console.error(err) }
     setLoading(false)
