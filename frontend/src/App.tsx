@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { ThemeProvider, useTheme } from './ThemeContext'
-import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import PredictionPanel from './components/PredictionPanel'
 import SignalsPanel from './components/SignalsPanel'
@@ -9,196 +8,222 @@ import StockChart from './components/StockChart'
 import FundamentalsPanel from './components/FundamentalsPanel'
 import MultiTimeframePanel from './components/MultiTimeframePanel'
 import AlertsPanel from './components/AlertsPanel'
-import TickerTape from './components/TickerTape'
 import PortfolioOptimizer from './components/PortfolioOptimizer'
 import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
+import ErrorBoundary from './components/ErrorBoundary'
 
-const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
+const VIEWS = [
+  { id: 'dashboard', key: '1', label: 'OVERVIEW' },
+  { id: 'predict', key: '2', label: 'PREDICT' },
+  { id: 'backtest', key: '3', label: 'BACKTEST' },
+  { id: 'signals', key: '4', label: 'SIGNALS' },
+  { id: 'fundamentals', key: '5', label: 'FUNDAMENTALS' },
+  { id: 'portfolio', key: '6', label: 'PORTFOLIO' },
+]
 
 function AppContent() {
-  const [ticker, setTicker] = useState<string>('AAPL')
-  const [activeView, setActiveView] = useState<string>('dashboard')
+  const [ticker, setTicker] = useState('AAPL')
+  const [activeView, setActiveView] = useState('dashboard')
+  const [inputTicker, setInputTicker] = useState('')
+  const [time, setTime] = useState(new Date())
   const { theme, toggleTheme } = useTheme()
-  const isDark = theme === 'dark'
+
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
-      if (VIEW_KEYS[e.key]) { e.preventDefault(); setActiveView(VIEW_KEYS[e.key]) }
-      if (e.key === '/') { e.preventDefault(); document.querySelector<HTMLInputElement>('[placeholder*="Search"]')?.focus() }
+      if ((e.target as HTMLElement).tagName === 'INPUT') return
+      const v = VIEWS.find(v => v.key === e.key)
+      if (v) { e.preventDefault(); setActiveView(v.id) }
       if (e.key === 't') { e.preventDefault(); toggleTheme() }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [toggleTheme])
 
+  const handleTickerSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (inputTicker.trim()) {
+      setTicker(inputTicker.trim().toUpperCase())
+      setInputTicker('')
+    }
+  }
+
   const renderView = () => {
     switch (activeView) {
-      case 'dashboard':
-        return <Dashboard ticker={ticker} />
+      case 'dashboard': return <Dashboard ticker={ticker} />
       case 'predict':
         return (
-          <div className="space-y-4">
+          <div className="space-y-2">
             <StockChart ticker={ticker} />
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
               <div className="xl:col-span-2"><PredictionPanel ticker={ticker} /></div>
               <div><BatchTrainPanel /></div>
             </div>
           </div>
         )
-      case 'backtest':
-        return <BacktestPanel ticker={ticker} />
+      case 'backtest': return <BacktestPanel ticker={ticker} />
       case 'signals':
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
             <div className="xl:col-span-2"><StockChart ticker={ticker} /></div>
-            <div className="space-y-4">
+            <div className="space-y-2">
               <SignalsPanel ticker={ticker} />
               <AlertsPanel ticker={ticker} />
             </div>
           </div>
         )
-      case 'portfolio':
-        return <PortfolioView />
+      case 'portfolio': return <PortfolioOptimizer />
       case 'fundamentals':
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
             <FundamentalsPanel ticker={ticker} />
             <MultiTimeframePanel ticker={ticker} />
           </div>
         )
-      default:
-        return <Dashboard ticker={ticker} />
+      default: return <Dashboard ticker={ticker} />
     }
   }
 
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const timeStr = time.toLocaleTimeString('en-US', { hour12: false })
+  const dateStr = time.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--bg-app)' }}>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Sidebar — hidden on mobile, visible on lg+ */}
-      <div className={`fixed lg:static z-40 lg:z-auto transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <Sidebar
-          onSelect={(t) => { setTicker(t); setSidebarOpen(false) }}
-          currentTicker={ticker}
-          activeView={activeView}
-          onViewChange={(v) => { setActiveView(v); setSidebarOpen(false) }}
-        />
+    <div className="min-h-screen pb-6" style={{ background: 'var(--bg)' }}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-4">
+          <span className="font-bold text-sm" style={{ color: 'var(--cyan)' }}>STOCKTERM</span>
+          <span style={{ color: 'var(--dim)' }}>v1.0</span>
+          <span className="cursor-blink" style={{ color: 'var(--green)' }}>●</span>
+          <span style={{ color: 'var(--dim)' }}>CONNECTED</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span style={{ color: 'var(--dim)' }}>{dateStr}</span>
+          <span className="font-bold" style={{ color: 'var(--amber)' }}>{timeStr}</span>
+          <button onClick={toggleTheme} className="px-2 py-0.5 text-xs">
+            {theme === 'dark' ? 'LIGHT' : 'DARK'}
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="h-14 lg:h-16 flex items-center justify-between px-4 lg:px-8 shrink-0" style={{
-          background: 'var(--bg-header)',
-          borderBottom: '1px solid rgb(var(--color-line))',
-        }}>
-          <div className="flex items-center gap-3 lg:gap-6">
-            {/* Mobile hamburger */}
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded"
-              style={{ color: 'rgb(var(--color-txt))' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 12h18M3 6h18M3 18h18" />
-              </svg>
-            </button>
-            <h1 className="text-2xl lg:text-4xl font-bold tracking-tight" style={{
-              fontFamily: '"Space Grotesk", system-ui, sans-serif',
-              color: 'rgb(var(--color-txt))',
-              letterSpacing: '-0.02em',
-            }}>{ticker}</h1>
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded" style={{
-              background: 'rgb(var(--color-up) / 0.08)',
-              border: '1px solid rgb(var(--color-up) / 0.15)',
-            }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot" />
-              <span className="text-xxs font-medium text-up" style={{ fontFamily: '"JetBrains Mono", monospace' }}>LIVE</span>
-            </div>
-            <div className="hidden sm:block w-px h-8" style={{ background: 'rgb(var(--color-line))' }} />
-            <div className="hidden sm:block"><HeroPrice ticker={ticker} /></div>
-          </div>
+      {/* Nav bar */}
+      <div className="flex items-center gap-0 px-4 py-1 border-b" style={{ borderColor: 'var(--border)' }}>
+        {VIEWS.map(v => (
+          <button
+            key={v.id}
+            onClick={() => setActiveView(v.id)}
+            className="px-3 py-1 text-xs font-bold transition-colors"
+            style={{
+              background: activeView === v.id ? 'var(--cyan)' : 'transparent',
+              color: activeView === v.id ? 'var(--bg)' : 'var(--dim)',
+              border: 'none',
+            }}
+          >
+            {v.key}:{v.label}
+          </button>
+        ))}
+        <div className="flex-1" />
+        <form onSubmit={handleTickerSubmit} className="flex items-center gap-1">
+          <span style={{ color: 'var(--dim)' }}>TICKER&gt;</span>
+          <input
+            value={inputTicker}
+            onChange={e => setInputTicker(e.target.value)}
+            placeholder={ticker}
+            className="w-20 text-xs bg-transparent border-none px-1 py-0"
+            style={{ color: 'var(--bright)', outline: 'none' }}
+          />
+        </form>
+      </div>
 
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="hidden sm:block px-2.5 py-1 rounded text-xxs font-semibold" style={{
-              fontFamily: '"Space Grotesk", system-ui, sans-serif',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              background: 'rgb(var(--color-accent) / 0.08)',
-              color: 'rgb(var(--color-accent))',
-              border: '1px solid rgb(var(--color-accent) / 0.15)',
-            }}>
-              {activeView}
-            </div>
-            <button
-              onClick={toggleTheme}
-              className="w-8 h-8 flex items-center justify-center rounded transition-all"
-              style={{
-                background: 'rgb(var(--color-surface-elevated))',
-                color: 'rgb(var(--color-txt-sec))',
-                border: '1px solid rgb(var(--color-line))',
-              }}
-              title={isDark ? 'Switch to light' : 'Switch to dark'}
-            >
-              {isDark ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                </svg>
-              )}
-            </button>
+      {/* Main content */}
+      <div className="flex">
+        <div className="flex-1 p-3 mr-0 lg:mr-[200px]">
+          {/* Ticker + Price header */}
+          <div className="flex items-baseline gap-3 mb-3">
+            <span className="text-2xl font-bold" style={{ color: 'var(--bright)' }}>{ticker}</span>
+            <HeroPrice ticker={ticker} />
           </div>
+          {renderView()}
         </div>
 
-        <TickerTape />
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto" style={{ background: 'var(--bg-app)' }}>
-          {renderView()}
-        </main>
+        {/* Right sidebar — watchlist */}
+        <div className="hidden lg:block ticker-sidebar">
+          <div className="p-2 border-b text-xs font-bold" style={{ borderColor: 'var(--border)', color: 'var(--cyan)' }}>
+            WATCHLIST
+          </div>
+          <TickerSidebar ticker={ticker} onSelect={setTicker} />
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div className="status-bar">
+        <span>{activeView.toUpperCase()}</span>
+        <span>|</span>
+        <span>{ticker}</span>
+        <span>|</span>
+        <span>LIVE</span>
+        <div className="flex-1" />
+        <span>PRESS 1-6 TO SWITCH VIEW</span>
+        <span>|</span>
+        <span>T: TOGGLE THEME</span>
       </div>
     </div>
   )
 }
 
-function PortfolioView() {
-  const [portfolio, setPortfolio] = useState<any>(null)
+function TickerSidebar({ ticker: current, onSelect }: { ticker: string; onSelect: (t: string) => void }) {
+  const [prices, setPrices] = useState<Record<string, any>>({})
+  const watchlist = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA', 'META', 'AMZN', 'JPM', 'V']
 
   useEffect(() => {
-    fetch('/api/portfolio')
-      .then(r => r.json())
-      .then(setPortfolio)
-      .catch(console.error)
+    const fetchAll = async () => {
+      const newPrices: Record<string, any> = {}
+      for (const t of watchlist) {
+        try {
+          const res = await fetch(`/api/stocks/${t}`)
+          const data = await res.json()
+          if (data.price) newPrices[t] = data.price
+        } catch {}
+      }
+      setPrices(newPrices)
+    }
+    fetchAll()
+    const i = setInterval(fetchAll, 30000)
+    return () => clearInterval(i)
   }, [])
 
   return (
-    <div className="space-y-4">
-      <PortfolioOptimizer />
-      <div className="card p-6">
-        <h3 className="section-header">Portfolio Overview</h3>
-        {portfolio ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'Total Value', value: `$${portfolio.total_portfolio_value?.toLocaleString()}`, cls: '' },
-              { label: 'Cash', value: `$${portfolio.current_cash?.toLocaleString()}`, cls: '' },
-              { label: 'Invested', value: `$${portfolio.total_invested?.toLocaleString()}`, cls: 'txt-dim' },
-              { label: 'Return', value: `${portfolio.total_return >= 0 ? '+' : ''}${portfolio.total_return?.toFixed(2)}%`, cls: portfolio.total_return >= 0 ? 'up' : 'down' },
-            ].map((item, i) => (
-              <div key={i} className="rounded p-4" style={{ background: 'rgb(var(--color-surface-elevated))', border: '1px solid rgb(var(--color-line))' }}>
-                <p className="text-xxs uppercase tracking-wider mb-1.5" style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif', color: 'rgb(var(--color-txt-muted))' }}>{item.label}</p>
-                <p className={`text-xl font-bold tabular-nums ${item.cls ? `text-${item.cls}` : ''}`} style={{ fontFamily: '"JetBrains Mono", monospace', color: item.cls ? undefined : 'rgb(var(--color-txt))' }}>{item.value}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm py-6 text-center" style={{ color: 'rgb(var(--color-txt-dim))' }}>Loading portfolio...</p>
-        )}
-      </div>
+    <div className="p-1">
+      {watchlist.map(t => {
+        const p = prices[t]
+        const isActive = t === current
+        const up = p && p.change >= 0
+        return (
+          <button
+            key={t}
+            onClick={() => onSelect(t)}
+            className="w-full text-left px-2 py-1 text-xs flex items-center justify-between border-none"
+            style={{
+              background: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--bright)' : 'var(--text)',
+            }}
+          >
+            <span className="font-bold">{t}</span>
+            {p ? (
+              <span style={{ color: up ? 'var(--green)' : 'var(--red)' }}>
+                {up ? '▲' : '▼'}{Math.abs(p.change_percent).toFixed(2)}%
+              </span>
+            ) : (
+              <span style={{ color: 'var(--dim)' }}>--</span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -206,7 +231,9 @@ function PortfolioView() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </ThemeProvider>
   )
 }

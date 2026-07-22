@@ -1,94 +1,68 @@
 import { useState, useEffect } from 'react'
 import { cachedFetch } from '../cache'
 
-interface FundamentalsPanelProps {
-  ticker: string
+function Row({ label, value, color }: { label: string; value: any; color?: string }) {
+  return (
+    <div className="flex items-center justify-between text-xs py-0.5">
+      <span style={{ color: 'var(--dim)' }}>{label}</span>
+      <span style={{ color: color || 'var(--text)' }}>{value ?? '--'}</span>
+    </div>
+  )
 }
 
-export default function FundamentalsPanel({ ticker }: FundamentalsPanelProps) {
+export default function FundamentalsPanel({ ticker }: { ticker: string }) {
   const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
 
   useEffect(() => { fetchData() }, [ticker])
 
   const fetchData = async () => {
-    setLoading(true)
-    try {
-      const json = await cachedFetch(`/api/stocks/${ticker}/fundamentals`)
-      setData(json)
-    } catch (err) { console.error(err) }
-    setLoading(false)
+    try { setData(await cachedFetch(`/api/stocks/${ticker}/fundamentals`)) } catch {}
   }
 
-  const Row = ({ label, value, color }: { label: string; value: any; color?: string }) => (
-    <div className="flex items-center justify-between py-1 border-b border-line/50 last:border-0">
-      <span className="text-xxs text-txt-dim">{label}</span>
-      <span className={`text-xs font-medium tabular-nums ${color || 'text-txt'}`}>{value ?? '—'}</span>
-    </div>
-  )
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="mb-3">
-      <p className="text-xxs text-txt-dim uppercase tracking-wider mb-1.5">{title}</p>
-      <div className="bg-surface-elevated rounded p-2.5">{children}</div>
-    </div>
-  )
-
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Fundamentals</span>
-        <button onClick={fetchData} disabled={loading} className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-dim">
-          {loading ? '...' : 'Refresh'}
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="text-txt-dim text-xs text-center py-12">Loading fundamentals...</div>
-      ) : data && !data.error ? (
-        <div>
+    <div className="panel">
+      <div className="panel-title">FUNDAMENTALS</div>
+      {data && !data.error ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
           {/* Score */}
-          <div className="text-center mb-3 py-2 bg-surface-elevated rounded">
-            <p className="text-xxs text-txt-dim uppercase">Fundamentals Score</p>
-            <p className={`text-xl font-bold ${
-              data.fundamentals_score?.score >= 60 ? 'text-up' :
-              data.fundamentals_score?.score >= 40 ? 'text-warn' : 'text-down'
-            }`}>{data.fundamentals_score?.score}/100</p>
-            <p className="text-xxs text-txt-muted">{data.fundamentals_score?.rating}</p>
+          <div className="mb-2">
+            <div className="text-xs" style={{ color: 'var(--dim)' }}>SCORE</div>
+            <span className="text-lg font-bold" style={{
+              color: data.fundamentals_score?.score >= 60 ? 'var(--green)' : data.fundamentals_score?.score >= 40 ? 'var(--amber)' : 'var(--red)',
+            }}>{data.fundamentals_score?.score}/100</span>
+            <span className="ml-2 text-xs" style={{ color: 'var(--dim)' }}>{data.fundamentals_score?.rating}</span>
           </div>
 
-          <Section title="Valuation">
-            <Row label="P/E Ratio" value={data.valuation?.pe_ratio?.toFixed(1)} />
-            <Row label="PEG Ratio" value={data.valuation?.peg_ratio?.toFixed(2)} />
-            <Row label="Price/Book" value={data.valuation?.price_to_book?.toFixed(1)} />
+          {/* Valuation */}
+          <div>
+            <div className="text-xs font-bold mb-1" style={{ color: 'var(--cyan)' }}>VALUATION</div>
+            <Row label="P/E" value={data.valuation?.pe_ratio?.toFixed(1)} />
+            <Row label="PEG" value={data.valuation?.peg_ratio?.toFixed(2)} />
+            <Row label="P/B" value={data.valuation?.price_to_book?.toFixed(1)} />
             <Row label="EV/EBITDA" value={data.valuation?.ev_to_ebitda?.toFixed(1)} />
-          </Section>
+          </div>
 
-          <Section title="Profitability">
-            <Row label="Profit Margin" value={data.profitability?.profit_margin ? `${data.profitability.profit_margin}%` : null}
-              color={data.profitability?.profit_margin > 20 ? 'text-up' : data.profitability?.profit_margin > 0 ? 'text-txt' : 'text-down'} />
+          {/* Profitability */}
+          <div>
+            <div className="text-xs font-bold mb-1" style={{ color: 'var(--cyan)' }}>PROFITABILITY</div>
+            <Row label="Margin" value={data.profitability?.profit_margin ? `${data.profitability.profit_margin}%` : null}
+              color={data.profitability?.profit_margin > 20 ? 'var(--green)' : data.profitability?.profit_margin > 0 ? 'var(--text)' : 'var(--red)'} />
             <Row label="ROE" value={data.profitability?.roe ? `${data.profitability.roe}%` : null}
-              color={data.profitability?.roe > 20 ? 'text-up' : 'text-txt'} />
-            <Row label="Revenue Growth" value={data.profitability?.revenue_growth ? `${data.profitability.revenue_growth}%` : null}
-              color={data.profitability?.revenue_growth > 0 ? 'text-up' : 'text-down'} />
-            <Row label="Earnings Growth" value={data.profitability?.earnings_growth ? `${data.profitability.earnings_growth}%` : null} />
-          </Section>
+              color={data.profitability?.roe > 20 ? 'var(--green)' : 'var(--text)'} />
+            <Row label="Rev Growth" value={data.profitability?.revenue_growth ? `${data.profitability.revenue_growth}%` : null}
+              color={data.profitability?.revenue_growth > 0 ? 'var(--green)' : 'var(--red)'} />
+          </div>
 
-          <Section title="Financial Health">
-            <Row label="Debt/Equity" value={data.financial_health?.debt_to_equity?.toFixed(1)} />
-            <Row label="Current Ratio" value={data.financial_health?.current_ratio?.toFixed(2)} />
-            <Row label="Free Cash Flow" value={data.financial_health?.free_cash_flow ? `$${(data.financial_health.free_cash_flow / 1e9).toFixed(1)}B` : null} />
-          </Section>
-
-          <Section title="Analysts">
-            <Row label="Target Mean" value={data.analysts?.target_mean_price ? `$${data.analysts.target_mean_price}` : null} />
-            <Row label="Recommendation" value={data.analysts?.recommendation}
-              color={data.analysts?.recommendation === 'buy' ? 'text-up' : data.analysts?.recommendation === 'sell' ? 'text-down' : 'text-txt'} />
-            <Row label="Analysts" value={data.analysts?.number_of_analysts} />
-          </Section>
+          {/* Health */}
+          <div>
+            <div className="text-xs font-bold mb-1" style={{ color: 'var(--cyan)' }}>HEALTH</div>
+            <Row label="D/E" value={data.financial_health?.debt_to_equity?.toFixed(1)} />
+            <Row label="Current" value={data.financial_health?.current_ratio?.toFixed(2)} />
+            <Row label="FCF" value={data.financial_health?.free_cash_flow ? `$${(data.financial_health.free_cash_flow / 1e9).toFixed(1)}B` : null} />
+          </div>
         </div>
       ) : (
-        <div className="text-txt-dim text-xs text-center py-12">{data?.error || 'No data'}</div>
+        <div style={{ color: 'var(--dim)' }}>{data?.error || 'Loading...'}</div>
       )}
     </div>
   )
