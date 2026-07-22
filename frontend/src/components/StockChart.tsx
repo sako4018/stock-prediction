@@ -95,7 +95,7 @@ export default function StockChart({ ticker }: StockChartProps) {
   const scaleX = (i: number) => pad.l + (i / data.length) * iW
 
   return (
-    <div className="panel">
+    <div className="card p-5">
       {/* OHLC Tooltip */}
       {hoverData && (
         <div className="flex items-center gap-4 mb-3 text-xs tabular-nums animate-fade-in" style={{

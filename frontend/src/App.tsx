@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ThemeProvider, useTheme } from './ThemeContext'
+import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import PredictionPanel from './components/PredictionPanel'
 import SignalsPanel from './components/SignalsPanel'
@@ -8,59 +9,37 @@ import StockChart from './components/StockChart'
 import FundamentalsPanel from './components/FundamentalsPanel'
 import MultiTimeframePanel from './components/MultiTimeframePanel'
 import AlertsPanel from './components/AlertsPanel'
+import TickerTape from './components/TickerTape'
 import PortfolioOptimizer from './components/PortfolioOptimizer'
 import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
 import ErrorBoundary from './components/ErrorBoundary'
 
-const VIEWS = [
-  { id: 'dashboard', key: '1', label: 'OVERVIEW' },
-  { id: 'predict', key: '2', label: 'PREDICT' },
-  { id: 'backtest', key: '3', label: 'BACKTEST' },
-  { id: 'signals', key: '4', label: 'SIGNALS' },
-  { id: 'fundamentals', key: '5', label: 'FUNDAMENTALS' },
-  { id: 'portfolio', key: '6', label: 'PORTFOLIO' },
-]
+const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
 
 function AppContent() {
   const [ticker, setTicker] = useState('AAPL')
   const [activeView, setActiveView] = useState('dashboard')
-  const [inputTicker, setInputTicker] = useState('')
-  const [time, setTime] = useState(new Date())
   const { theme, toggleTheme } = useTheme()
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
+  const isDark = theme === 'dark'
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return
-      const v = VIEWS.find(v => v.key === e.key)
-      if (v) { e.preventDefault(); setActiveView(v.id) }
-      if (e.key === 't') { e.preventDefault(); toggleTheme() }
+      if (VIEW_KEYS[e.key]) { e.preventDefault(); setActiveView(VIEW_KEYS[e.key]) }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [toggleTheme])
-
-  const handleTickerSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (inputTicker.trim()) {
-      setTicker(inputTicker.trim().toUpperCase())
-      setInputTicker('')
-    }
-  }
+  }, [])
 
   const renderView = () => {
     switch (activeView) {
       case 'dashboard': return <Dashboard ticker={ticker} />
       case 'predict':
         return (
-          <div className="space-y-2">
+          <div className="space-y-4">
             <StockChart ticker={ticker} />
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <div className="xl:col-span-2"><PredictionPanel ticker={ticker} /></div>
               <div><BatchTrainPanel /></div>
             </div>
@@ -69,9 +48,9 @@ function AppContent() {
       case 'backtest': return <BacktestPanel ticker={ticker} />
       case 'signals':
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <div className="xl:col-span-2"><StockChart ticker={ticker} /></div>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <SignalsPanel ticker={ticker} />
               <AlertsPanel ticker={ticker} />
             </div>
@@ -80,7 +59,7 @@ function AppContent() {
       case 'portfolio': return <PortfolioOptimizer />
       case 'fundamentals':
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <FundamentalsPanel ticker={ticker} />
             <MultiTimeframePanel ticker={ticker} />
           </div>
@@ -89,145 +68,76 @@ function AppContent() {
     }
   }
 
-  const timeStr = time.toLocaleTimeString('en-US', { hour12: false })
-  const dateStr = time.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
-
   return (
-    <div className="min-h-screen pb-6" style={{ background: 'var(--bg)' }}>
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-4">
-          <span className="font-bold text-sm" style={{ color: 'var(--cyan)' }}>STOCKTERM</span>
-          <span style={{ color: 'var(--dim)' }}>v1.0</span>
-          <span className="cursor-blink" style={{ color: 'var(--green)' }}>●</span>
-          <span style={{ color: 'var(--dim)' }}>CONNECTED</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span style={{ color: 'var(--dim)' }}>{dateStr}</span>
-          <span className="font-bold" style={{ color: 'var(--amber)' }}>{timeStr}</span>
-          <button onClick={toggleTheme} className="px-3 py-1 text-xs font-bold" style={{
-            border: '1px solid var(--cyan)',
-            color: 'var(--cyan)',
-            background: 'transparent',
-          }}>
-            {theme === 'dark' ? '☀ LIGHT' : '● DARK'}
-          </button>
-        </div>
-      </div>
+    <div className="flex min-h-screen" style={{ background: 'var(--bg-app)' }}>
+      <Sidebar
+        onSelect={setTicker}
+        currentTicker={ticker}
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
 
-      {/* Nav bar */}
-      <div className="flex items-center gap-0 px-4 py-1 border-b" style={{ borderColor: 'var(--border)' }}>
-        {VIEWS.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setActiveView(v.id)}
-            className="px-3 py-1 text-xs font-bold transition-colors"
-            style={{
-              background: activeView === v.id ? 'var(--cyan)' : 'transparent',
-              color: activeView === v.id ? 'var(--bg)' : 'var(--dim)',
-              border: 'none',
-            }}
-          >
-            {v.key}:{v.label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        <form onSubmit={handleTickerSubmit} className="flex items-center gap-1">
-          <span style={{ color: 'var(--dim)' }}>TICKER&gt;</span>
-          <input
-            value={inputTicker}
-            onChange={e => setInputTicker(e.target.value)}
-            placeholder={ticker}
-            className="w-20 text-xs bg-transparent border-none px-1 py-0"
-            style={{ color: 'var(--bright)', outline: 'none' }}
-          />
-        </form>
-      </div>
-
-      {/* Main content */}
-      <div className="flex">
-        <div className="flex-1 p-3 mr-0 lg:mr-[200px]">
-          {/* Ticker + Price header */}
-          <div className="flex items-baseline gap-3 mb-3">
-            <span className="text-2xl font-bold" style={{ color: 'var(--bright)' }}>{ticker}</span>
-            <HeroPrice ticker={ticker} />
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="h-14 lg:h-16 flex items-center justify-between px-4 lg:px-8 shrink-0" style={{
+          background: 'var(--bg-header)',
+          borderBottom: '1px solid rgb(var(--color-line))',
+        }}>
+          <div className="flex items-center gap-3 lg:gap-6">
+            {/* Mobile hamburger */}
+            <button onClick={() => {}} className="lg:hidden w-8 h-8 flex items-center justify-center rounded"
+              style={{ color: 'rgb(var(--color-txt))' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12h18M3 6h18M3 18h18" />
+              </svg>
+            </button>
+            <h1 className="text-2xl lg:text-4xl font-bold tracking-tight" style={{
+              fontFamily: '"Space Grotesk", system-ui, sans-serif',
+              color: 'rgb(var(--color-txt))',
+              letterSpacing: '-0.02em',
+            }}>{ticker}</h1>
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded" style={{
+              background: 'rgb(var(--color-up) / 0.08)',
+              border: '1px solid rgb(var(--color-up) / 0.15)',
+            }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: 'rgb(var(--color-up))' }} />
+              <span className="text-xxs font-medium" style={{ color: 'rgb(var(--color-up))', fontFamily: '"JetBrains Mono", monospace' }}>LIVE</span>
+            </div>
+            <div className="hidden sm:block w-px h-8" style={{ background: 'rgb(var(--color-line))' }} />
+            <div className="hidden sm:block"><HeroPrice ticker={ticker} /></div>
           </div>
+
+          <div className="flex items-center gap-2 lg:gap-3">
+            {/* Theme toggle button */}
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                fontFamily: '"Space Grotesk", system-ui, sans-serif',
+                background: isDark ? 'rgb(var(--color-accent) / 0.1)' : 'rgb(var(--color-surface-elevated))',
+                color: isDark ? 'rgb(var(--color-accent))' : 'rgb(var(--color-txt-sec))',
+                border: `1px solid ${isDark ? 'rgb(var(--color-accent) / 0.2)' : 'rgb(var(--color-line))'}`,
+              }}
+            >
+              {isDark ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                </svg>
+              )}
+              {isDark ? 'Light' : 'Dark'}
+            </button>
+          </div>
+        </div>
+
+        <TickerTape />
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto" style={{ background: 'var(--bg-app)' }}>
           {renderView()}
-        </div>
-
-        {/* Right sidebar — watchlist */}
-        <div className="hidden lg:block ticker-sidebar">
-          <div className="p-2 border-b text-xs font-bold" style={{ borderColor: 'var(--border)', color: 'var(--cyan)' }}>
-            WATCHLIST
-          </div>
-          <TickerSidebar ticker={ticker} onSelect={setTicker} />
-        </div>
+        </main>
       </div>
-
-      {/* Status bar */}
-      <div className="status-bar">
-        <span>{activeView.toUpperCase()}</span>
-        <span>|</span>
-        <span>{ticker}</span>
-        <span>|</span>
-        <span>LIVE</span>
-        <div className="flex-1" />
-        <span>PRESS 1-6 TO SWITCH VIEW</span>
-        <span>|</span>
-        <span>T: TOGGLE THEME</span>
-      </div>
-    </div>
-  )
-}
-
-function TickerSidebar({ ticker: current, onSelect }: { ticker: string; onSelect: (t: string) => void }) {
-  const [prices, setPrices] = useState<Record<string, any>>({})
-  const watchlist = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA', 'META', 'AMZN', 'JPM', 'V']
-
-  useEffect(() => {
-    const fetchAll = async () => {
-      const newPrices: Record<string, any> = {}
-      for (const t of watchlist) {
-        try {
-          const res = await fetch(`/api/stocks/${t}`)
-          const data = await res.json()
-          if (data.price) newPrices[t] = data.price
-        } catch {}
-      }
-      setPrices(newPrices)
-    }
-    fetchAll()
-    const i = setInterval(fetchAll, 30000)
-    return () => clearInterval(i)
-  }, [])
-
-  return (
-    <div className="p-1">
-      {watchlist.map(t => {
-        const p = prices[t]
-        const isActive = t === current
-        const up = p && p.change >= 0
-        return (
-          <button
-            key={t}
-            onClick={() => onSelect(t)}
-            className="w-full text-left px-2 py-1 text-xs flex items-center justify-between border-none"
-            style={{
-              background: isActive ? 'var(--bg-hover)' : 'transparent',
-              color: isActive ? 'var(--bright)' : 'var(--text)',
-            }}
-          >
-            <span className="font-bold">{t}</span>
-            {p ? (
-              <span style={{ color: up ? 'var(--green)' : 'var(--red)' }}>
-                {up ? '▲' : '▼'}{Math.abs(p.change_percent).toFixed(2)}%
-              </span>
-            ) : (
-              <span style={{ color: 'var(--dim)' }}>--</span>
-            )}
-          </button>
-        )
-      })}
     </div>
   )
 }

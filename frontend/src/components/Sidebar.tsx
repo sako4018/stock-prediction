@@ -23,7 +23,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
 
   return (
     <aside
-      className="h-screen flex flex-col shrink-0 overflow-visible transition-all duration-300 ease-out"
+      className="h-screen flex flex-col shrink-0 overflow-visible transition-all duration-300 ease-out hidden lg:flex"
       style={{
         width: expanded ? '240px' : '56px',
         background: 'rgb(var(--color-surface-alt))',
@@ -70,11 +70,12 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
               style={{
                 padding: expanded ? '0.5rem 0.75rem' : '0.5rem 0',
                 justifyContent: expanded ? 'flex-start' : 'center',
-                background: isActive ? 'rgb(var(--color-accent) / 0.08)' : 'transparent',
+                background: isActive ? 'rgb(var(--color-accent) / 0.1)' : 'transparent',
                 color: isActive ? 'rgb(var(--color-accent))' : 'rgb(var(--color-txt-dim))',
                 fontFamily: '"Space Grotesk", system-ui, sans-serif',
                 fontSize: '0.8125rem',
                 fontWeight: isActive ? 600 : 400,
+                border: 'none',
               }}
             >
               {isActive && (
@@ -103,7 +104,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
           color: 'rgb(var(--color-txt-muted))',
           justifyContent: expanded ? 'flex-start' : 'center',
         }}>
-          <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse-dot shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot shrink-0" style={{ background: 'rgb(var(--color-up))' }} />
           {expanded && <span>Connected</span>}
         </div>
       </div>

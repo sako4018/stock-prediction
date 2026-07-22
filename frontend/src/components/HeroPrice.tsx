@@ -21,7 +21,7 @@ function AnimatedPrice({ value, decimals = 2, prefix = '$' }: { value: number; d
     return () => cancelAnimationFrame(rafRef.current)
   }, [value])
 
-  return <span>{prefix}{display.toFixed(decimals)}</span>
+  return <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{prefix}{display.toFixed(decimals)}</span>
 }
 
 export default function HeroPrice({ ticker }: { ticker: string }) {
@@ -40,20 +40,29 @@ export default function HeroPrice({ ticker }: { ticker: string }) {
     return () => clearInterval(i)
   }, [ticker])
 
-  if (!data) return <span style={{ color: 'var(--dim)' }}>--</span>
+  if (!data) return <span style={{ color: 'rgb(var(--color-txt-muted))' }}>Loading...</span>
 
   const up = data.change >= 0
-  const color = up ? 'var(--green)' : 'var(--red)'
-  const arrow = up ? '▲' : '▼'
 
   return (
-    <span className="text-sm">
-      <span className="font-bold" style={{ color: 'var(--bright)' }}>
+    <div className="flex items-baseline gap-3">
+      <span className="text-3xl font-bold tabular-nums" style={{
+        fontFamily: '"JetBrains Mono", monospace',
+        color: 'rgb(var(--color-txt))',
+        letterSpacing: '-0.02em',
+      }}>
         <AnimatedPrice value={data.current_price} />
       </span>
-      <span className="ml-2" style={{ color }}>
-        {arrow} {up ? '+' : ''}{data.change.toFixed(2)} ({up ? '+' : ''}{data.change_percent.toFixed(2)}%)
+      <span className="text-sm font-medium tabular-nums" style={{ color: up ? 'rgb(var(--color-up))' : 'rgb(var(--color-down))' }}>
+        {up ? '+' : ''}<AnimatedPrice value={data.change} decimals={2} />
       </span>
-    </span>
+      <span className="text-xxs font-semibold px-2 py-0.5 rounded" style={{
+        fontFamily: '"JetBrains Mono", monospace',
+        background: up ? 'rgb(var(--color-up) / 0.08)' : 'rgb(var(--color-down) / 0.08)',
+        color: up ? 'rgb(var(--color-up))' : 'rgb(var(--color-down))',
+      }}>
+        {up ? '▲' : '▼'} {Math.abs(data.change_percent).toFixed(2)}%
+      </span>
+    </div>
   )
 }
