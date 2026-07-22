@@ -17,6 +17,18 @@
   --dim: #555555;
   --text: #cccccc;
   --bright: #ffffff;
+
+  /* Chart colors */
+  --chart-grid: #1a1a1a;
+  --chart-label: #666666;
+  --chart-sma20: #00ccff;
+  --chart-sma50: #ff44ff;
+  --chart-bb: #ffaa00;
+  --chart-up: #00ff88;
+  --chart-down: #ff4444;
+  --gauge-bg: #1a1a1a;
+  --gauge-label: #666666;
+  --price-loading: #1a1a1a;
 }
 
 .light {
@@ -32,6 +44,18 @@
   --dim: #999999;
   --text: #333333;
   --bright: #000000;
+
+  /* Chart colors — light */
+  --chart-grid: #e0e0e0;
+  --chart-label: #888888;
+  --chart-sma20: #0077aa;
+  --chart-sma50: #aa22aa;
+  --chart-bb: #cc8800;
+  --chart-up: #008844;
+  --chart-down: #cc2222;
+  --gauge-bg: #e0e0e0;
+  --gauge-label: #888888;
+  --price-loading: #e0e0e0;
 }
 
 body {

@@ -105,8 +105,12 @@ function AppContent() {
         <div className="flex items-center gap-4">
           <span style={{ color: 'var(--dim)' }}>{dateStr}</span>
           <span className="font-bold" style={{ color: 'var(--amber)' }}>{timeStr}</span>
-          <button onClick={toggleTheme} className="px-2 py-0.5 text-xs">
-            {theme === 'dark' ? 'LIGHT' : 'DARK'}
+          <button onClick={toggleTheme} className="px-3 py-1 text-xs font-bold" style={{
+            border: '1px solid var(--cyan)',
+            color: 'var(--cyan)',
+            background: 'transparent',
+          }}>
+            {theme === 'dark' ? '☀ LIGHT' : '● DARK'}
           </button>
         </div>
       </div>
