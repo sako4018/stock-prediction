@@ -1,0 +1,21 @@
+services:
+  # Backend API
+  - type: web
+    name: stock-prediction-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONIOENCODING=utf-8 python backend/app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    healthCheckPath: /api/stocks/AAPL
+
+  # Frontend
+  - type: static
+    name: stock-prediction-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        from: /api/*
+        to: stock-prediction-api:8000/api/:splat
