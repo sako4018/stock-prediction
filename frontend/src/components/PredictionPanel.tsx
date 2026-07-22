@@ -31,7 +31,38 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
     try {
       const res = await fetch(`/api/stocks/${ticker}/combined`)
       const json = await res.json()
-      setData(json.combined)
+      const raw = json.combined
+
+      // Normalize: old backend returns {final_signal, breakdown}, new returns {direction, voters}
+      if (raw.direction) {
+        // New format — already correct
+        setData(raw)
+      } else if (raw.final_signal) {
+        // Old format — convert to new format
+        const sig = raw.final_signal.toUpperCase()
+        const direction = sig.includes('BUY') ? 'UP' : sig.includes('SELL') ? 'DOWN' : 'UNCERTAIN'
+        const confidence = raw.final_confidence || 0
+        const voters: Record<string, Voter> = {}
+        if (raw.breakdown) {
+          if (raw.breakdown.ml) voters.ml = { vote: raw.breakdown.ml.signal?.includes('BUY') ? 'UP' : raw.breakdown.ml.signal?.includes('SELL') ? 'DOWN' : 'NEUTRAL', label: 'ML Model' }
+          if (raw.breakdown.technical) voters.technical = { vote: raw.breakdown.technical.signal?.includes('BUY') ? 'UP' : raw.breakdown.technical.signal?.includes('SELL') ? 'DOWN' : 'NEUTRAL', label: 'Technical' }
+          if (raw.breakdown.sentiment) voters.sentiment = { vote: raw.breakdown.sentiment.score > 0 ? 'UP' : raw.breakdown.sentiment.score < 0 ? 'DOWN' : 'NEUTRAL', label: 'Sentiment' }
+        }
+        const upVotes = Object.values(voters).filter(v => v.vote === 'UP').length
+        const downVotes = Object.values(voters).filter(v => v.vote === 'DOWN').length
+        const neutralVotes = Object.values(voters).filter(v => v.vote === 'NEUTRAL').length
+        setData({
+          direction,
+          confidence,
+          voters,
+          up_votes: upVotes,
+          down_votes: downVotes,
+          neutral_votes: neutralVotes,
+          summary: raw.agreement === 'all_agree' ? 'All indicators agree.' : 'Mixed signals — indicators disagree.',
+        })
+      } else {
+        setData(null)
+      }
     } catch (err) { console.error(err) }
     setLoading(false)
   }
