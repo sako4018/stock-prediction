@@ -174,11 +174,16 @@ def get_stock_info(ticker: str):
 def get_stock_history(ticker: str, period: str = "1y", interval: str = "1d"):
     """Исторически данни с технически индикатори."""
     try:
-        # За кратки периоди използваме hourly за повече data points
-        if period == '1mo' and interval == '1d':
-            interval = '1h'
-        elif period == '3mo' and interval == '1d':
-            interval = '1d'  # 3mo with daily is fine (~63 points)
+        # Correct interval mapping per period
+        interval_map = {
+            '1mo': '1d',
+            '3mo': '1d',
+            '6mo': '1d',
+            '1y': '1d',
+            '2y': '1d',
+            '5y': '1d',
+        }
+        interval = interval_map.get(period, interval)
 
         collector = StockDataCollector(ticker=ticker, period=period, interval=interval)
         data = collector.fetch_stock_data(save_to_csv=False)
@@ -280,11 +285,10 @@ def predict_stock(ticker: str, period: str = "2y"):
 @app.get("/api/stocks/{ticker}/combined")
 def get_combined_signal(ticker: str, period: str = "2y"):
     """
-    Финален сигнал: ML + Technical Indicators + News Sentiment.
-    Връща breakdown на всички източници и комбиниран резултат.
+    Финален сигнал: 5 индикатора решават UP или DOWN.
     """
     try:
-        # === 1. ML SIGNAL ===
+        # === 1. FETCH DATA ===
         collector = StockDataCollector(ticker=ticker, period=period, interval="1d")
         data = collector.fetch_stock_data(save_to_csv=False)
 
@@ -300,8 +304,8 @@ def get_combined_signal(ticker: str, period: str = "2y"):
         feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
         model_data = scaled_data[feature_cols].values
 
+        # === 2. ML PREDICTION ===
         ml_prediction = 0.5
-        ml_signal = 'HOLD'
         model_metrics = {}
 
         if len(model_data) >= 60:
@@ -324,68 +328,27 @@ def get_combined_signal(ticker: str, period: str = "2y"):
             ml_prediction = float(model.predict(latest_data)[0][0])
             model_metrics = model.evaluate(X_val, y_val)
 
-            if ml_prediction > 0.55:
-                ml_signal = 'BUY'
-            elif ml_prediction < 0.45:
-                ml_signal = 'SELL'
-            else:
-                ml_signal = 'HOLD'
-
-        # === 2. TECHNICAL SIGNAL ===
+        # === 3. INDICATORS ===
         df = preprocessor.data
-        latest_rsi = df['RSI'].iloc[-1]
-        latest_macd = df['MACD'].iloc[-1]
-        latest_macd_signal = df['MACD_Signal'].iloc[-1]
         latest_close = df['Close'].iloc[-1]
 
-        buy_signals = 0
-        sell_signals = 0
+        indicators = {
+            'rsi': float(df['RSI'].iloc[-1]),
+            'macd': float(df['MACD'].iloc[-1]),
+            'macd_signal': float(df['MACD_Signal'].iloc[-1]),
+            'sma_20': float(df['SMA_20'].iloc[-1]) if 'SMA_20' in df.columns else latest_close,
+        }
 
-        # RSI
-        if latest_rsi < 30: buy_signals += 1
-        elif latest_rsi > 70: sell_signals += 1
-
-        # MACD
-        if latest_macd > latest_macd_signal: buy_signals += 1
-        else: sell_signals += 1
-
-        # Bollinger
-        bb_upper = df['BB_Upper'].iloc[-1]
-        bb_lower = df['BB_Lower'].iloc[-1]
-        if latest_close < bb_lower: buy_signals += 1
-        elif latest_close > bb_upper: sell_signals += 1
-
-        # Stochastic
-        stoch_k = df['Stoch_K'].iloc[-1]
-        if stoch_k < 20: buy_signals += 1
-        elif stoch_k > 80: sell_signals += 1
-
-        # Williams %R
-        wr = df['Williams_R'].iloc[-1]
-        if wr < -80: buy_signals += 1
-        elif wr > -20: sell_signals += 1
-
-        if buy_signals >= 3:
-            technical_signal = 'STRONG BUY'
-        elif buy_signals >= 2:
-            technical_signal = 'BUY'
-        elif sell_signals >= 3:
-            technical_signal = 'STRONG SELL'
-        elif sell_signals >= 2:
-            technical_signal = 'SELL'
-        else:
-            technical_signal = 'NEUTRAL'
-
-        # === 3. NEWS SENTIMENT ===
+        # === 4. NEWS SENTIMENT ===
         company_info = collector.get_company_info()
         company_name = company_info.get('name', '') if company_info else ''
         sentiment_data = get_news_sentiment(ticker, company_name)
 
-        # === 4. COMBINE ALL SIGNALS ===
+        # === 5. COMBINE (5 voters) ===
         combined = combine_signals(
-            ml_signal=ml_signal,
             ml_prediction=ml_prediction,
-            technical_signal=technical_signal,
+            current_price=latest_close,
+            indicators=indicators,
             sentiment_data=sentiment_data,
             model_metrics=model_metrics
         )

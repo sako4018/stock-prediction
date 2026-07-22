@@ -5,36 +5,19 @@ interface PredictionPanelProps {
   ticker: string
 }
 
+interface Voter {
+  vote: 'UP' | 'DOWN' | 'NEUTRAL'
+  label: string
+}
+
 interface CombinedSignal {
-  final_signal: string
-  final_score: number
-  final_confidence: number
-  agreement: string
-  breakdown: {
-    ml: {
-      signal: string
-      score: number
-      confidence: number
-      weight: number
-      raw_prediction: number
-    }
-    technical: {
-      signal: string
-      score: number
-      confidence: number
-      weight: number
-    }
-    sentiment: {
-      signal: string
-      score: number
-      confidence: number
-      weight: number
-      article_count: number
-      bullish: number
-      bearish: number
-      neutral: number
-    }
-  }
+  direction: 'UP' | 'DOWN' | 'UNCERTAIN'
+  confidence: number
+  voters: Record<string, Voter>
+  up_votes: number
+  down_votes: number
+  neutral_votes: number
+  summary: string
 }
 
 export default function PredictionPanel({ ticker }: PredictionPanelProps) {
@@ -53,45 +36,30 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
     setLoading(false)
   }
 
-  const getSignalColor = (signal: string) => {
-    const s = signal.toUpperCase()
-    if (s.includes('BUY') || s.includes('BULLISH')) return 'text-up'
-    if (s.includes('SELL') || s.includes('BEARISH')) return 'text-down'
+  const getDirectionColor = (dir: string) => {
+    if (dir === 'UP') return 'text-up'
+    if (dir === 'DOWN') return 'text-down'
     return 'text-txt-muted'
   }
 
-  const getSignalBg = (signal: string) => {
-    const s = signal.toUpperCase()
-    if (s.includes('BUY') || s.includes('BULLISH')) return 'bg-up/10 border-up/20'
-    if (s.includes('SELL') || s.includes('BEARISH')) return 'bg-down/10 border-down/20'
+  const getDirectionBg = (dir: string) => {
+    if (dir === 'UP') return 'bg-up/8 border-up/20'
+    if (dir === 'DOWN') return 'bg-down/8 border-down/20'
     return 'bg-surface-overlay border-line'
   }
 
-  const getScoreBar = (score: number) => {
-    const pct = ((score + 1) / 2) * 100
-    const color = score > 0.1 ? '#22C55E' : score < -0.1 ? '#EF4444' : '#6B7280'
-    return (
-      <div className="h-1.5 bg-surface-overlay rounded-full overflow-hidden relative">
-        <div className="absolute inset-0 flex">
-          <div className="w-1/2" />
-          <div className="w-px bg-frame h-full" />
-        </div>
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            width: `${Math.abs(pct - 50)}%`,
-            marginLeft: pct >= 50 ? '50%' : `${pct}%`,
-            backgroundColor: color
-          }}
-        />
-      </div>
-    )
+  const getVoteIcon = (vote: string) => {
+    if (vote === 'UP') return { icon: '↑', color: 'text-up' }
+    if (vote === 'DOWN') return { icon: '↓', color: 'text-down' }
+    return { icon: '—', color: 'text-txt-muted' }
   }
 
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Combined Signal</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>
+          Price Prediction
+        </span>
         <button onClick={fetchCombined} disabled={loading}
           className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-muted">
           {loading ? '...' : 'Refresh'}
@@ -100,106 +68,79 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
 
       {loading ? (
         <div className="space-y-3">
-          <div className="h-8 skeleton" />
-          <div className="h-12 skeleton" />
+          <div className="h-20 skeleton" />
           <div className="h-4 skeleton" />
           <div className="h-4 skeleton" />
         </div>
       ) : data ? (
         <FadeIn>
-        <div className="space-y-4">
+          <div className="space-y-4">
 
-          {/* === FINAL SIGNAL === */}
-          <div className={`text-center py-3 rounded border ${getSignalBg(data.final_signal)}`}>
-            <p className="text-xxs text-txt-muted uppercase tracking-wider mb-1">Final Verdict</p>
-            <p className={`text-lg font-bold ${getSignalColor(data.final_signal)}`}>
-              {data.final_signal}
-            </p>
-            <div className="flex items-center justify-center gap-3 mt-1.5">
-              <span className="text-xxs text-txt-muted">
-                Confidence: <span className="text-txt-dim font-medium">{data.final_confidence.toFixed(0)}%</span>
-              </span>
-              {data.agreement === 'all_agree' && (
-                <span className="text-xxs px-1.5 py-0.5 rounded bg-accent/10 text-accent">All Agree</span>
+            {/* Big Direction Display */}
+            <div className={`text-center py-5 rounded-lg border ${getDirectionBg(data.direction)}`}>
+              <div className={`text-5xl font-bold mb-2 ${getDirectionColor(data.direction)}`}
+                style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                {data.direction === 'UP' ? '↑' : data.direction === 'DOWN' ? '↓' : '?'}
+              </div>
+              <p className={`text-xl font-bold ${getDirectionColor(data.direction)}`}
+                style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>
+                {data.direction === 'UP' ? 'Will Go Up' :
+                 data.direction === 'DOWN' ? 'Will Go Down' :
+                 'Uncertain'}
+              </p>
+              {data.direction !== 'UNCERTAIN' && (
+                <p className="text-sm mt-1" style={{ color: 'rgb(var(--color-txt-sec))' }}>
+                  Confidence: <span className="font-bold" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                    {data.confidence}%
+                  </span>
+                </p>
               )}
             </div>
+
+            {/* Summary */}
+            <p className="text-xs text-center" style={{ color: 'rgb(var(--color-txt-dim))' }}>
+              {data.summary}
+            </p>
+
+            {/* Voter Breakdown */}
+            <div>
+              <p className="text-xxs uppercase tracking-wider mb-2" style={{
+                fontFamily: '"Space Grotesk", system-ui, sans-serif',
+                letterSpacing: '0.1em',
+                color: 'rgb(var(--color-txt-muted))',
+              }}>Indicator Votes</p>
+              <div className="space-y-1.5">
+                {Object.entries(data.voters).map(([key, voter]) => {
+                  const v = getVoteIcon(voter.vote)
+                  return (
+                    <div key={key} className="flex items-center justify-between py-1.5 px-3 rounded"
+                      style={{ background: 'rgb(var(--color-surface))' }}>
+                      <span className="text-xs" style={{ color: 'rgb(var(--color-txt-sec))' }}>
+                        {voter.label}
+                      </span>
+                      <span className={`text-sm font-bold ${v.color}`}
+                        style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                        {v.icon}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Vote Count */}
+            <div className="flex items-center justify-center gap-4 text-xxs" style={{
+              color: 'rgb(var(--color-txt-muted))',
+              fontFamily: '"JetBrains Mono", monospace',
+            }}>
+              <span className="text-up">{data.up_votes} UP</span>
+              <span>·</span>
+              <span className="text-down">{data.down_votes} DOWN</span>
+              <span>·</span>
+              <span>{data.neutral_votes} NEUTRAL</span>
+            </div>
+
           </div>
-
-          {/* === BREAKDOWN === */}
-          <div className="space-y-3">
-
-            {/* ML Signal */}
-            <div className="bg-surface-elevated rounded p-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                  <span className="text-xs font-medium text-txt">ML Model</span>
-                  <span className="text-xxs text-txt-muted">(40% weight)</span>
-                </div>
-                <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.ml.signal)}`}>
-                  {data.breakdown.ml.signal}
-                </span>
-              </div>
-              {getScoreBar(data.breakdown.ml.score)}
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xxs text-txt-muted">
-                  Output: {data.breakdown.ml.raw_prediction.toFixed(4)}
-                </span>
-                <span className="text-xxs text-txt-muted">
-                  Confidence: {data.breakdown.ml.confidence.toFixed(0)}%
-                </span>
-              </div>
-            </div>
-
-            {/* Technical Signal */}
-            <div className="bg-surface-elevated rounded p-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-up" />
-                  <span className="text-xs font-medium text-txt">Technical Indicators</span>
-                  <span className="text-xxs text-txt-muted">(35% weight)</span>
-                </div>
-                <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.technical.signal)}`}>
-                  {data.breakdown.technical.signal}
-                </span>
-              </div>
-              {getScoreBar(data.breakdown.technical.score)}
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xxs text-txt-muted">RSI + MACD + BB + Stoch + Williams</span>
-                <span className="text-xxs text-txt-muted">
-                  Confidence: {data.breakdown.technical.confidence.toFixed(0)}%
-                </span>
-              </div>
-            </div>
-
-            {/* Sentiment Signal */}
-            <div className="bg-surface-elevated rounded p-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
-                  <span className="text-xs font-medium text-txt">News Sentiment</span>
-                  <span className="text-xxs text-txt-muted">(25% weight)</span>
-                </div>
-                <span className={`text-xs font-semibold ${getSignalColor(data.breakdown.sentiment.signal)}`}>
-                  {data.breakdown.sentiment.signal}
-                </span>
-              </div>
-              {getScoreBar(data.breakdown.sentiment.score)}
-              <div className="flex items-center justify-between mt-1.5">
-                <span className="text-xxs text-txt-muted">
-                  {data.breakdown.sentiment.article_count} articles
-                  {data.breakdown.sentiment.article_count > 0 && (
-                    <> — <span className="text-up">{data.breakdown.sentiment.bullish}↑</span> <span className="text-down">{data.breakdown.sentiment.bearish}↓</span> <span className="text-txt-muted">{data.breakdown.sentiment.neutral}—</span></>
-                  )}
-                </span>
-                <span className="text-xxs text-txt-muted">
-                  Confidence: {data.breakdown.sentiment.confidence.toFixed(0)}%
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
         </FadeIn>
       ) : (
         <div className="text-txt-muted text-xs text-center py-12">No data</div>

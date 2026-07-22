@@ -1,177 +1,173 @@
 """
-Combined Signal Module
-======================
-Комбинира ML предсказание, технически индикатори и news sentiment
-в един финален сигнал.
+Combined Signal Module (v2 — Majority Vote)
+============================================
+5 гласоподаватели решават: UP или DOWN?
 
-Тегла:
-- ML Model: 40%
-- Technical Indicators: 35%
-- News Sentiment: 25%
+1. ML Model    — предсказана цена vs текуща
+2. RSI         — oversold (<40) → UP, overbought (>60) → DOWN
+3. MACD        — MACD > signal → UP,反之 → DOWN
+4. Price Trend — цена > 20 SMA → UP,反之 → DOWN
+5. Sentiment   — bullish → UP, bearish → DOWN
+
+Решение: мнозинството печели. Ако няма ясен победител → UNCERTAIN.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 
 
-# Тегла за комбиниране
-WEIGHTS = {
-    'ml': 0.40,
-    'technical': 0.35,
-    'sentiment': 0.25
-}
-
-
-def signal_to_score(signal: str) -> float:
+def _ml_voter(ml_prediction: float, current_price: float) -> str:
     """
-    Конвертира сигнал в числов score (-1 до 1).
-
-    BUY / BULLISH / OVERSOLD → positive
-    SELL / BEARISH / OVERBOUGHT → negative
-    HOLD / NEUTRAL → 0
+    ML моделът предсказва нормализирана цена (0-1).
+    Ако предсказаната стойност > 0.5 → цената ще се качи.
     """
-    signal_upper = signal.upper()
-
-    if 'STRONG BUY' in signal_upper:
-        return 1.0
-    elif 'BUY' in signal_upper or 'BULLISH' in signal_upper or 'OVERSOLD' in signal_upper:
-        return 0.6
-    elif 'STRONG SELL' in signal_upper:
-        return -1.0
-    elif 'SELL' in signal_upper or 'BEARISH' in signal_upper or 'OVERBOUGHT' in signal_upper:
-        return -0.6
-    else:
-        return 0.0
+    if ml_prediction > 0.55:
+        return 'UP'
+    elif ml_prediction < 0.45:
+        return 'DOWN'
+    return 'NEUTRAL'
 
 
-def calculate_ml_confidence(prediction_value: float, model_metrics: Dict = None) -> float:
+def _rsi_voter(rsi_value: float) -> str:
     """
-    Изчислява confidence за ML модела.
-
-    Подобрено: използва distance от 0.5 и model accuracy ако е налична.
+    RSI логика:
+    - < 35 → премалък (oversold) → ще се качи
+    - > 65 → премного (overbought) → ще спадне
+    - Между 35-65 → неутрален
     """
-    # Distance from 0.5 (undecided point)
-    distance = abs(prediction_value - 0.5)
+    if rsi_value < 35:
+        return 'UP'
+    elif rsi_value > 65:
+        return 'DOWN'
+    return 'NEUTRAL'
 
-    # Base confidence from prediction strength
-    # prediction 0.5 = 0% confidence, prediction 0.0 or 1.0 = 100%
-    base_confidence = distance * 2 * 100  # 0-100%
 
-    # If we have model accuracy, boost confidence
-    if model_metrics and 'accuracy' in model_metrics:
-        model_accuracy = model_metrics['accuracy'] / 100
-        base_confidence = base_confidence * 0.7 + (model_accuracy * 100) * 0.3
+def _macd_voter(macd: float, macd_signal: float) -> str:
+    """
+    MACD логика:
+    - MACD > signal line → bullish momentum → UP
+    - MACD < signal line → bearish momentum → DOWN
+    """
+    if macd > macd_signal:
+        return 'UP'
+    elif macd < macd_signal:
+        return 'DOWN'
+    return 'NEUTRAL'
 
-    return min(max(base_confidence, 5), 95)  # Clamp 5-95%
+
+def _trend_voter(current_price: float, sma_20: float) -> str:
+    """
+    Price trend логика:
+    - Цена > 20-дневна SMA → uptrend → UP
+    - Цена < 20-дневна SMA → downtrend → DOWN
+    """
+    if sma_20 == 0:
+        return 'NEUTRAL'
+    pct_diff = (current_price - sma_20) / sma_20
+    if pct_diff > 0.01:  # >1% над SMA
+        return 'UP'
+    elif pct_diff < -0.01:  # >1% под SMA
+        return 'DOWN'
+    return 'NEUTRAL'
+
+
+def _sentiment_voter(sentiment_data: Dict) -> str:
+    """
+    Sentiment логика:
+    - bullish score > 0.15 → UP
+    - bearish score < -0.15 → DOWN
+    - иначе → NEUTRAL
+    """
+    score = sentiment_data.get('score', 0)
+    if score > 0.15:
+        return 'UP'
+    elif score < -0.15:
+        return 'DOWN'
+    return 'NEUTRAL'
 
 
 def combine_signals(
-    ml_signal: str,
     ml_prediction: float,
-    technical_signal: str,
+    current_price: float,
+    indicators: Dict,
     sentiment_data: Dict,
     model_metrics: Dict = None
 ) -> Dict:
     """
-    Комбинира всички сигнали в един финален резултат.
-
-    Параметри:
-    ----------
-    ml_signal : str
-        Сигнал от ML модела (BUY/SELL/HOLD)
-    ml_prediction : float
-        Суров output от модела (0-1)
-    technical_signal : str
-        Сигнал от технически индикатори
-    sentiment_data : Dict
-        Данни от news sentiment analysis
-    model_metrics : Dict, optional
-        Метрики от модела (accuracy и т.н.)
+    5 гласоподаватели решават посоката.
 
     Връща:
     -------
     Dict
-        Финален сигнал с breakdown
+        direction: 'UP' | 'DOWN' | 'UNCERTAIN'
+        confidence: 0-100
+        voters: { ml, rsi, macd, trend, sentiment }
+        summary: кратко описание
     """
 
-    # 1. ML Score
-    ml_score = signal_to_score(ml_signal)
-    ml_confidence = calculate_ml_confidence(ml_prediction, model_metrics)
+    # 1. ML глас
+    ml_vote = _ml_voter(ml_prediction, current_price)
 
-    # 2. Technical Score
-    tech_score = signal_to_score(technical_signal)
-    tech_confidence = 70  # Technical indicators обикновено са ~70% сигурни
+    # 2. RSI глас
+    rsi_val = indicators.get('rsi', 50)
+    rsi_vote = _rsi_voter(rsi_val)
 
-    # 3. Sentiment Score
-    sent_score = sentiment_data.get('score', 0)
-    sent_confidence = sentiment_data.get('confidence', 0)
-    sent_label = sentiment_data.get('overall', 'neutral')
+    # 3. MACD глас
+    macd_val = indicators.get('macd', 0)
+    macd_signal = indicators.get('macd_signal', 0)
+    macd_vote = _macd_voter(macd_val, macd_signal)
 
-    # Weighted combination
-    combined_score = (
-        ml_score * WEIGHTS['ml'] +
-        tech_score * WEIGHTS['technical'] +
-        sent_score * WEIGHTS['sentiment']
-    )
+    # 4. Trend глас
+    sma_20 = indicators.get('sma_20', current_price)
+    trend_vote = _trend_voter(current_price, sma_20)
 
-    # Combined confidence (weighted average)
-    combined_confidence = (
-        ml_confidence * WEIGHTS['ml'] +
-        tech_confidence * WEIGHTS['technical'] +
-        sent_confidence * WEIGHTS['sentiment']
-    )
+    # 5. Sentiment глас
+    sent_vote = _sentiment_voter(sentiment_data)
 
-    # Boost confidence if all signals agree
-    signals = [ml_score, tech_score, sent_score]
-    all_positive = all(s > 0 for s in signals if s != 0)
-    all_negative = all(s < 0 for s in signals if s != 0)
+    # Събиране на гласовете
+    voters = {
+        'ml': {'vote': ml_vote, 'label': 'ML Model'},
+        'rsi': {'vote': rsi_vote, 'label': 'RSI'},
+        'macd': {'vote': macd_vote, 'label': 'MACD'},
+        'trend': {'vote': trend_vote, 'label': 'Price Trend'},
+        'sentiment': {'vote': sent_vote, 'label': 'Sentiment'},
+    }
 
-    if all_positive or all_negative:
-        combined_confidence = min(combined_confidence * 1.2, 95)
+    # Броене
+    up_votes = sum(1 for v in voters.values() if v['vote'] == 'UP')
+    down_votes = sum(1 for v in voters.values() if v['vote'] == 'DOWN')
+    neutral_votes = sum(1 for v in voters.values() if v['vote'] == 'NEUTRAL')
+    total_active = up_votes + down_votes
 
-    # Determine final signal
-    if combined_score > 0.15:
-        if combined_score > 0.4:
-            final_signal = 'STRONG BUY'
+    # Решение
+    if total_active == 0 or up_votes == down_votes:
+        direction = 'UNCERTAIN'
+        confidence = 0
+        summary = 'Няма ясен сигнал — индикаторите не са единодушни.'
+    elif up_votes > down_votes:
+        direction = 'UP'
+        confidence = round((up_votes / total_active) * 100)
+        if up_votes >= 4:
+            summary = 'Силен сигнал за покачване — почти всички индикатори са bullish.'
+        elif up_votes >= 3:
+            summary = 'Покачване е по-вероятно — мнозинството от индикаторите са bullish.'
         else:
-            final_signal = 'BUY'
-    elif combined_score < -0.15:
-        if combined_score < -0.4:
-            final_signal = 'STRONG SELL'
-        else:
-            final_signal = 'SELL'
+            summary = 'Слабо покачване — само 2 от 5 индикатора са bullish.'
     else:
-        final_signal = 'HOLD'
+        direction = 'DOWN'
+        confidence = round((down_votes / total_active) * 100)
+        if down_votes >= 4:
+            summary = 'Силен сигнал за спад — почти всички индикатори са bearish.'
+        elif down_votes >= 3:
+            summary = 'Спад е по-вероятен — мнозинството от индикаторите са bearish.'
+        else:
+            summary = 'Слаб спад — само 2 от 5 индикатора са bearish.'
 
     return {
-        'final_signal': final_signal,
-        'final_score': round(combined_score, 3),
-        'final_confidence': round(combined_confidence, 1),
-
-        'breakdown': {
-            'ml': {
-                'signal': ml_signal,
-                'score': round(ml_score, 3),
-                'confidence': round(ml_confidence, 1),
-                'weight': WEIGHTS['ml'],
-                'raw_prediction': round(ml_prediction, 4)
-            },
-            'technical': {
-                'signal': technical_signal,
-                'score': round(tech_score, 3),
-                'confidence': round(tech_confidence, 1),
-                'weight': WEIGHTS['technical']
-            },
-            'sentiment': {
-                'signal': sent_label.upper(),
-                'score': round(sent_score, 3),
-                'confidence': round(sent_confidence, 1),
-                'weight': WEIGHTS['sentiment'],
-                'article_count': sentiment_data.get('article_count', 0),
-                'bullish': sentiment_data.get('bullish_count', 0),
-                'bearish': sentiment_data.get('bearish_count', 0),
-                'neutral': sentiment_data.get('neutral_count', 0)
-            }
-        },
-
-        'agreement': 'all_agree' if (all_positive or all_negative) else 'mixed'
+        'direction': direction,
+        'confidence': confidence,
+        'voters': voters,
+        'up_votes': up_votes,
+        'down_votes': down_votes,
+        'neutral_votes': neutral_votes,
+        'summary': summary,
     }
