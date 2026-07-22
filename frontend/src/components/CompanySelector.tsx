@@ -5,9 +5,10 @@ import { createPortal } from 'react-dom'
 interface CompanySelectorProps {
   onSelect: (ticker: string) => void
   currentTicker: string
+  expanded?: boolean
 }
 
-export default function CompanySelector({ onSelect, currentTicker }: CompanySelectorProps) {
+export default function CompanySelector({ onSelect, currentTicker, expanded = true }: CompanySelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeSector, setActiveSector] = useState('All')
@@ -68,18 +69,30 @@ export default function CompanySelector({ onSelect, currentTicker }: CompanySele
       <button
         ref={buttonRef}
         onClick={openDropdown}
-        className="w-full flex items-center gap-2.5 px-3 py-2 rounded bg-surface-overlay border border-line hover:border-line-light transition-colors text-left"
+        className="w-full flex items-center gap-2.5 rounded transition-colors text-left"
+        style={{
+          padding: expanded ? '0.5rem 0.75rem' : '0.5rem 0',
+          justifyContent: expanded ? 'flex-start' : 'center',
+          background: 'rgb(var(--color-surface-overlay))',
+          border: '1px solid rgb(var(--color-line))',
+        }}
       >
-        <div className="w-7 h-7 rounded bg-accent/15 flex items-center justify-center shrink-0">
-          <span className="text-xxs font-semibold text-accent">{currentTicker.slice(0, 2)}</span>
+        <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{
+          background: 'rgb(var(--color-accent) / 0.12)',
+        }}>
+          <span className="text-xxs font-semibold text-accent" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{currentTicker.slice(0, 2)}</span>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-txt">{currentTicker}</p>
-          <p className="text-xxs text-txt-muted truncate">{currentCompany?.name || 'Custom'}</p>
-        </div>
-        <svg className={`w-3.5 h-3.5 text-txt-muted shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        {expanded && (
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-txt" style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>{currentTicker}</p>
+            <p className="text-xxs text-txt-muted truncate">{currentCompany?.name || 'Custom'}</p>
+          </div>
+        )}
+        {expanded && (
+          <svg className={`w-3.5 h-3.5 text-txt-muted shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
       </button>
 
       {isOpen && createPortal(

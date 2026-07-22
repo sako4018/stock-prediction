@@ -31,7 +31,7 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
     setData(null)
     setLoading(true)
     fetchInfo()
-    const interval = setInterval(fetchInfo, 30000)
+    const interval = setInterval(fetchInfo, 10000)
     return () => clearInterval(interval)
   }, [ticker])
 
@@ -44,9 +44,9 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
     setLoading(false)
   }
 
-  if (loading) return compact ? null : <div className="bg-surface-alt border border-line rounded-lg p-4 h-24 skeleton" />
+  if (loading) return compact ? null : <div className="card p-4 h-24 skeleton" />
 
-  if (!data) return compact ? null : <div className="bg-surface-alt border border-line rounded-lg p-4 h-24" />
+  if (!data) return compact ? null : <div className="card p-4 h-24" />
 
   if (compact) {
     return (
@@ -71,7 +71,7 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
 
   return (
     <FadeIn>
-      <div className="bg-surface-alt border border-line rounded-lg p-4 card-smooth">
+      <div className="card p-5">
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="flex items-center gap-2">

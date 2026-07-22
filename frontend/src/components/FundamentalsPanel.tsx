@@ -35,9 +35,9 @@ export default function FundamentalsPanel({ ticker }: FundamentalsPanelProps) {
   )
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-4">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Fundamentals</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Fundamentals</span>
         <button onClick={fetchData} disabled={loading} className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-dim">
           {loading ? '...' : 'Refresh'}
         </button>

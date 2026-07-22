@@ -4,6 +4,7 @@ import AnimatedNumber from './AnimatedNumber'
 interface WatchlistProps {
   onSelect: (ticker: string) => void
   currentTicker: string
+  expanded?: boolean
 }
 
 interface WatchlistItem {
@@ -13,7 +14,7 @@ interface WatchlistItem {
   changePercent: number | null
 }
 
-export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
+export default function Watchlist({ onSelect, currentTicker, expanded = true }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<string[]>(() => {
     const saved = localStorage.getItem('watchlist')
     return saved ? JSON.parse(saved) : ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'NVDA']
@@ -58,10 +59,37 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
     }
   }
 
+  if (!expanded) {
+    return (
+      <div className="space-y-0.5">
+        {watchlist.map(ticker => {
+          const isActive = ticker === currentTicker
+          return (
+            <button
+              key={ticker}
+              onClick={() => onSelect(ticker)}
+              className="w-full flex items-center justify-center py-1.5 rounded transition-colors"
+              style={{
+                background: isActive ? 'rgb(var(--color-accent) / 0.08)' : 'transparent',
+                color: isActive ? 'rgb(var(--color-accent))' : 'rgb(var(--color-txt-dim))',
+              }}
+            >
+              <span className="text-xxs font-medium" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{ticker.slice(0, 2)}</span>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Watchlist</span>
+        <span className="text-xxs font-medium uppercase tracking-wider" style={{
+          fontFamily: '"Space Grotesk", system-ui, sans-serif',
+          letterSpacing: '0.1em',
+          color: 'rgb(var(--color-txt-muted))',
+        }}>Watchlist</span>
         <button onClick={addSymbol} className="text-xxs text-accent hover:text-accent-hover">+ Add</button>
       </div>
       <div className="space-y-px">
@@ -73,11 +101,15 @@ export default function Watchlist({ onSelect, currentTicker }: WatchlistProps) {
             <button
               key={ticker}
               onClick={() => onSelect(ticker)}
-              className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-left transition-colors group ${
-                isActive ? 'bg-accent/10' : 'hover:bg-surface-overlay'
-              }`}
+              className="w-full flex items-center justify-between px-2 py-1.5 rounded text-left transition-colors"
+              style={{
+                background: isActive ? 'rgb(var(--color-accent) / 0.06)' : 'transparent',
+              }}
             >
-              <span className={`text-xs font-medium ${isActive ? 'text-accent' : 'text-txt'}`}>{ticker}</span>
+              <span className="text-xs font-medium" style={{
+                fontFamily: '"JetBrains Mono", monospace',
+                color: isActive ? 'rgb(var(--color-accent))' : 'rgb(var(--color-txt))',
+              }}>{ticker}</span>
               {item?.price ? (
                 <div className="flex items-center gap-2">
                   <AnimatedNumber value={item.price} prefix="$" className="text-xs text-txt-sec" />

@@ -45,8 +45,8 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
   }
 
   const chartData = data ? [
-    { name: 'Strategy', value: data.results.total_return, color: data.results.total_return >= 0 ? '#22C55E' : '#EF4444' },
-    { name: 'Buy & Hold', value: data.results.buy_and_hold_return, color: '#3B82F6' },
+    { name: 'Strategy', value: data.results.total_return, color: data.results.total_return >= 0 ? 'var(--chart-up)' : 'var(--chart-down)' },
+    { name: 'Buy & Hold', value: data.results.buy_and_hold_return, color: 'var(--chart-bb)' },
   ] : []
 
   const MetricCard = ({ label, value, color = 'text-txt', sub }: { label: string; value: string; color?: string; sub?: string }) => (
@@ -58,9 +58,9 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
   )
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-5">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-5">
-        <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Backtest Results</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Backtest Results</span>
         <button onClick={runBacktest} disabled={loading}
           className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-muted">
           {loading ? 'Running...' : 'Run Again'}
@@ -116,9 +116,9 @@ export default function BacktestPanel({ ticker }: BacktestPanelProps) {
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} layout="vertical">
-                  <XAxis type="number" stroke="#6B7280" tick={{ fontSize: 10, fill: '#6B7280' }} />
-                  <YAxis type="category" dataKey="name" stroke="#6B7280" tick={{ fontSize: 10, fill: '#9CA3AF' }} width={70} />
-                  <Tooltip contentStyle={{ backgroundColor: '#171A20', border: '1px solid #2A2D35', borderRadius: 6, fontSize: 12 }} />
+                  <XAxis type="number" stroke="var(--chart-label)" tick={{ fontSize: 10, fill: 'var(--chart-label)' }} />
+                  <YAxis type="category" dataKey="name" stroke="var(--chart-label)" tick={{ fontSize: 10, fill: 'var(--gauge-label)' }} width={70} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--color-surface-elevated)', border: '1px solid var(--color-line)', borderRadius: 6, fontSize: 12, color: 'var(--color-txt)' }} />
                   <Bar dataKey="value" radius={[0, 3, 3, 0]} barSize={16}>
                     {chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Bar>

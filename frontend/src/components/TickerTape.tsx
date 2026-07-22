@@ -13,7 +13,7 @@ export default function TickerTape() {
 
   useEffect(() => {
     fetchPrices()
-    const interval = setInterval(fetchPrices, 30000)
+    const interval = setInterval(fetchPrices, 10000)
     return () => clearInterval(interval)
   }, [])
 
@@ -44,26 +44,31 @@ export default function TickerTape() {
 
   if (loading && items.length === 0) return null
 
-  // Duplicate items for seamless scroll
   const doubled = [...items, ...items]
 
   return (
-    <div className="h-8 bg-surface-elevated border-b border-line overflow-hidden flex items-center relative">
-      <div className="flex items-center gap-6 animate-ticker whitespace-nowrap">
+    <div className="h-7 overflow-hidden flex items-center relative" style={{
+      background: 'rgb(var(--color-surface-alt))',
+      borderBottom: '1px solid rgb(var(--color-line))',
+    }}>
+      <div className="flex items-center gap-5 animate-ticker whitespace-nowrap" style={{
+        fontFamily: '"JetBrains Mono", monospace',
+        fontSize: '0.6875rem',
+      }}>
         {doubled.map((item, i) => {
           const isPositive = (item.changePercent ?? 0) >= 0
           return (
-            <span key={`${item.ticker}-${i}`} className="flex items-center gap-2 text-xs">
-              <span className="font-semibold text-txt">{item.ticker}</span>
+            <span key={`${item.ticker}-${i}`} className="flex items-center gap-2">
+              <span className="font-semibold" style={{ color: 'rgb(var(--color-txt))' }}>{item.ticker}</span>
               {item.price ? (
                 <>
-                  <span className="text-txt-sec tabular-nums">${item.price.toFixed(2)}</span>
+                  <span style={{ color: 'rgb(var(--color-txt-sec))' }}>${item.price.toFixed(2)}</span>
                   <span className={`tabular-nums font-medium ${isPositive ? 'text-up' : 'text-down'}`}>
                     {isPositive ? '▲' : '▼'}{Math.abs(item.changePercent ?? 0).toFixed(2)}%
                   </span>
                 </>
               ) : (
-                <span className="text-txt-dim">—</span>
+                <span style={{ color: 'rgb(var(--color-txt-dim))' }}>—</span>
               )}
             </span>
           )

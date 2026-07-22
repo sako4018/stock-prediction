@@ -34,9 +34,9 @@ export default function PortfolioOptimizer() {
   const COLORS = ['#7c4dff', '#00b8d4', '#69f0ae', '#ff6e40', '#ffd740', '#e040fb', '#40c4ff', '#b388ff']
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-5 card-smooth">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Portfolio Optimizer</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Portfolio Optimizer</span>
       </div>
 
       {/* Input */}
@@ -91,9 +91,9 @@ export default function PortfolioOptimizer() {
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} layout="vertical">
-                    <XAxis type="number" stroke="#6b6b80" tick={{ fontSize: 10, fill: '#6b6b80' }} unit="%" />
-                    <YAxis type="category" dataKey="name" stroke="#6b6b80" tick={{ fontSize: 11, fill: '#e8e8e8' }} width={50} />
-                    <Tooltip contentStyle={{ background: '#13131a', border: '1px solid #222233', borderRadius: 6, fontSize: 12 }} />
+                    <XAxis type="number" stroke="var(--chart-label)" tick={{ fontSize: 10, fill: 'var(--chart-label)' }} unit="%" />
+                    <YAxis type="category" dataKey="name" stroke="var(--chart-label)" tick={{ fontSize: 11, fill: 'var(--color-txt-sec)' }} width={50} />
+                    <Tooltip contentStyle={{ background: 'var(--color-surface-elevated)', border: '1px solid var(--color-line)', borderRadius: 6, fontSize: 12, color: 'var(--color-txt)' }} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
                       {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Bar>

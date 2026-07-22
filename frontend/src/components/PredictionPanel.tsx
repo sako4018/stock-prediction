@@ -89,9 +89,9 @@ export default function PredictionPanel({ ticker }: PredictionPanelProps) {
   }
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-4">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-txt-muted uppercase tracking-wider">Combined Signal</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Combined Signal</span>
         <button onClick={fetchCombined} disabled={loading}
           className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-muted">
           {loading ? '...' : 'Refresh'}

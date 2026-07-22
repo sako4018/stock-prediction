@@ -50,7 +50,7 @@ function Gauge({ value, min, max, label, color }: { value: number; min: number; 
         {/* Background arc */}
         <path
           d={`M ${bgStart.x} ${bgStart.y} A ${r} ${r} 0 0 1 ${bgEnd.x} ${bgEnd.y}`}
-          fill="none" stroke="#222233" strokeWidth="7" strokeLinecap="round"
+          fill="none" stroke="var(--gauge-bg)" strokeWidth="7" strokeLinecap="round"
         />
         {/* Value arc */}
         {pct > 0.005 && (
@@ -63,8 +63,8 @@ function Gauge({ value, min, max, label, color }: { value: number; min: number; 
         <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={color} strokeWidth="2" strokeLinecap="round" />
         <circle cx={cx} cy={cy} r="3" fill={color} />
         {/* Min/Max labels */}
-        <text x={cx - r - 2} y={cy + 12} fill="#6b6b80" fontSize="8" textAnchor="middle">{min}</text>
-        <text x={cx + r + 2} y={cy + 12} fill="#6b6b80" fontSize="8" textAnchor="middle">{max}</text>
+        <text x={cx - r - 2} y={cy + 12} fill="var(--gauge-label)" fontSize="8" textAnchor="middle">{min}</text>
+        <text x={cx + r + 2} y={cy + 12} fill="var(--gauge-label)" fontSize="8" textAnchor="middle">{max}</text>
       </svg>
       <span className="text-xxs text-txt-dim mt-1">{label}</span>
       <span className="text-sm font-bold tabular-nums text-txt">{value.toFixed(1)}</span>
@@ -132,9 +132,9 @@ export default function SignalsPanel({ ticker }: SignalsPanelProps) {
   }
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-5 card-smooth">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Technical Signals</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Technical Signals</span>
         <button onClick={fetchSignals} disabled={loading}
           className="text-xxs text-accent hover:text-accent-hover disabled:text-txt-dim">
           {loading ? '...' : 'Refresh'}

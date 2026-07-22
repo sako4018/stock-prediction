@@ -45,9 +45,9 @@ export default function BatchTrainPanel() {
   }
 
   return (
-    <div className="bg-surface-alt border border-line rounded-lg p-5 card-smooth">
+    <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xxs font-medium text-txt-dim uppercase tracking-wider">Batch Training</span>
+        <span className="section-header" style={{ border: 'none', paddingBottom: 0, marginBottom: 0 }}>Batch Training</span>
         <span className="text-xxs text-txt-dim">{models.length} models trained</span>
       </div>
 
