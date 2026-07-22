@@ -321,7 +321,7 @@ def get_combined_signal(ticker: str, period: str = "2y"):
                 model.load_model(model_name)
             except:
                 model.build_lstm_model()
-                model.train_model(X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
+                model.train_model(X_train, y_train, X_val, y_val, epochs=20, batch_size=32)
                 model.save_model(model_name)
 
             latest_data = model_data[-60:].reshape(1, 60, -1)
