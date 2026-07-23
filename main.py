@@ -43,7 +43,7 @@ class StockPredictionPipeline:
         Стъпка 1: Събиране на данни
         """
         print("\n" + "="*60)
-        print("📊 СТЪПКА 1: СЪБИРАНЕ НА ДАННИ")
+        print("[STEP 1] СЪБИРАНЕ НА ДАННИ")
         print("="*60 + "\n")
 
         self.collector = StockDataCollector(
@@ -55,12 +55,12 @@ class StockPredictionPipeline:
         self.data = self.collector.fetch_stock_data()
 
         if self.data is None or len(self.data) == 0:
-            raise ValueError(f"❌ Няма данни за {self.ticker}")
+            raise ValueError(f"[ERROR] Няма данни за {self.ticker}")
 
         # Показване на real-time информация
         price_info = self.collector.get_real_time_price()
         if price_info:
-            print(f"\n💹 Текуща информация за {self.ticker}:")
+            print(f"\n[INFO] Текуща информация за {self.ticker}:")
             print(f"   Цена: ${price_info['current_price']:.2f}")
             print(f"   Промяна: {price_info['change']:+.2f} ({price_info['change_percent']:+.2f}%)")
 
@@ -71,11 +71,11 @@ class StockPredictionPipeline:
         Стъпка 2: Обработка на данни
         """
         print("\n" + "="*60)
-        print("📈 СТЪПКА 2: ОБРАБОТКА НА ДАННИ")
+        print("[STEP 2] ОБРАБОТКА НА ДАННИ")
         print("="*60 + "\n")
 
         if self.data is None:
-            raise ValueError("❌ Първо събери данни с collect_data()")
+            raise ValueError("[ERROR] Първо събери данни с collect_data()")
 
         self.preprocessor = StockDataPreprocessor(self.data)
 
@@ -88,7 +88,7 @@ class StockPredictionPipeline:
         # Нормализиране
         self.preprocessor.normalize_data()
 
-        print("\n✅ Данните са готови за модела!")
+        print("\n[OK] Данните са готови за модела!")
 
         return self.preprocessor
 
@@ -97,11 +97,11 @@ class StockPredictionPipeline:
         Стъпка 3: Подготовка на последователности за LSTM
         """
         print("\n" + "="*60)
-        print("🔄 СТЪПКА 3: ПОДГОТОВКА НА ПОСЛЕДОВАТЕЛНОСТИ")
+        print("[STEP 3] ПОДГОТОВКА НА ПОСЛЕДОВАТЕЛНОСТИ")
         print("="*60 + "\n")
 
         if self.preprocessor is None:
-            raise ValueError("❌ Първо обработи данни с preprocess_data()")
+            raise ValueError("[ERROR] Първо обработи данни с preprocess_data()")
 
         # Взимане на нормализираните данни
         data = self.preprocessor.scaled_data
@@ -130,11 +130,11 @@ class StockPredictionPipeline:
         Стъпка 4: Тренировка на модела
         """
         print("\n" + "="*60)
-        print("🤖 СТЪПКА 4: ТРЕНИРОВКА НА МОДЕЛА")
+        print("[STEP 4] ТРЕНИРОВКА НА МОДЕЛА")
         print("="*60 + "\n")
 
         if not hasattr(self, 'X_train'):
-            raise ValueError("❌ Първо подготви последователностите с prepare_sequences()")
+            raise ValueError("[ERROR] Първо подготви последователностите с prepare_sequences()")
 
         # Създаване на модела
         sequence_length = self.X_train.shape[1]
@@ -170,7 +170,7 @@ class StockPredictionPipeline:
         model_name = f'{self.ticker}_stock_model'
         self.model.save_model(model_name)
 
-        print(f"\n✅ Модел тренирован и запазен като '{model_name}'")
+        print(f"\n[OK] Модел тренирован и запазен като '{model_name}'")
 
         return self.model
 
@@ -179,11 +179,11 @@ class StockPredictionPipeline:
         Стъпка 5: Оценка на модела
         """
         print("\n" + "="*60)
-        print("📊 СТЪПКА 5: ОЦЕНКА НА МОДЕЛА")
+        print("[STEP 5] ОЦЕНКА НА МОДЕЛА")
         print("="*60 + "\n")
 
         if self.model is None:
-            raise ValueError("❌ Първо тренирай модела с train_model()")
+            raise ValueError("[ERROR] Първо тренирай модела с train_model()")
 
         # Оценка
         metrics = self.model.evaluate(self.X_test, self.y_test)
@@ -195,11 +195,11 @@ class StockPredictionPipeline:
         Стъпка 6: Backtesting
         """
         print("\n" + "="*60)
-        print("💰 СТЪПКА 6: BACKTESTING")
+        print("[STEP 6] BACKTESTING")
         print("="*60 + "\n")
 
         if self.model is None:
-            raise ValueError("❌ Първо тренирай модела с train_model()")
+            raise ValueError("[ERROR] Първо тренирай модела с train_model()")
 
         # Предсказания върху test данните
         predictions = self.model.predict(self.X_test)
@@ -243,7 +243,7 @@ class StockPredictionPipeline:
         Прави предсказание за следващия период
         """
         print("\n" + "="*60)
-        print("🔮 ПРЕДСКАЗВАНЕ НА БЪДЕЩЕТО")
+        print("[PREDICT] ПРЕДСКАЗВАНЕ НА БЪДЕЩЕТО")
         print("="*60 + "\n")
 
         # Зареждане на модела ако не е зареден
@@ -276,15 +276,15 @@ class StockPredictionPipeline:
 
         current_price = self.data['Close'].values[-1]
 
-        print(f"\n📊 Предсказание за {self.ticker}:")
+        print(f"\n[INFO] Предсказание за {self.ticker}:")
         print(f"   Текуща цена: ${current_price:.2f}")
         print(f"   Предсказана стойност (нормализирана): {predicted_value:.4f}")
 
         if predicted_value > 0.5:
-            signal = "🟢 BUY - Очаква се покачване"
+            signal = "BUY - Очаква се покачване"
             confidence = (predicted_value - 0.5) * 200  # Конвертиране в %
         else:
-            signal = "🔴 SELL - Очаква се спад"
+            signal = "SELL - Очаква се спад"
             confidence = (0.5 - predicted_value) * 200
 
         print(f"   Сигнал: {signal}")
@@ -338,16 +338,16 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "="*60)
-    print("🚀 STOCK PREDICTION SYSTEM")
+    print("STOCK PREDICTION SYSTEM")
     print("="*60)
-    print(f"\n⏰ Време: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"📈 Акция: {args.ticker}")
-    print(f"📅 Период: {args.period}\n")
+    print(f"\n[TIME] Време: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"[INFO] Акция: {args.ticker}")
+    print(f"[INFO] Период: {args.period}\n")
 
     # Web Dashboard
     if args.web:
-        print("🌐 Стартиране на web dashboard...")
-        print("💡 Ще видиш командата за стартиране в следваща версия")
+        print("[INFO] Стартиране на web dashboard...")
+        print("[INFO] Ще видиш командата за стартиране в следваща версия")
         return
 
     # Създаване на pipeline
@@ -392,27 +392,27 @@ def main():
             try:
                 pipeline.model = StockPredictionModel()
                 pipeline.model.load_model(model_name)
-                print(f"✅ Зареден модел: {model_name}")
+                print(f"[OK] Зареден модел: {model_name}")
             except:
-                print(f"⚠️ Модел {model_name} не е намерен. Тренираме нов...")
+                print(f"[WARN] Модел {model_name} не е намерен. Тренираме нов...")
                 pipeline.train_model(epochs=args.epochs, batch_size=args.batch_size)
 
             pipeline.run_backtest()
 
         else:
-            print("❌ Моля посочи --train, --predict, --backtest, --full или --web")
+            print("[ERROR] Моля посочи --train, --predict, --backtest, --full или --web")
             parser.print_help()
             return
 
         print("\n" + "="*60)
-        print("✅ ЗАВЪРШЕНО УСПЕШНО!")
+        print("[OK] ЗАВЪРШЕНО УСПЕШНО!")
         print("="*60 + "\n")
 
     except KeyboardInterrupt:
-        print("\n\n⚠️ Прекъснато от потребителя")
+        print("\n\n[WARN] Прекъснато от потребителя")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ ГРЕШКА: {e}")
+        print(f"\n[ERROR] ГРЕШКА: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -45,7 +45,7 @@ class StockDataPreprocessor:
         - Stochastic Oscillator
         - Williams %R
         """
-        print("📈 Изчисляване на технически индикатори...")
+        print("[UP] Изчисляване на технически индикатори...")
 
         df = self.data.copy()
         n = len(df)
@@ -184,8 +184,8 @@ class StockDataPreprocessor:
 
         self.data = df
 
-        print(f"✅ Създадени {len(df.columns)} колони с индикатори")
-        print(f"📊 Налични данни: {len(df)} реда")
+        print(f"[OK] Създадени {len(df.columns)} колони с индикатори")
+        print(f"[INFO] Налични данни: {len(df)} реда")
 
         return df
 
@@ -202,7 +202,7 @@ class StockDataPreprocessor:
         - Future_Price: Цената след N дни
         - Price_Direction: 1 (нагоре) или 0 (надолу)
         """
-        print(f"🎯 Създаване на target variable за {days_ahead} ден напред...")
+        print(f"[TARGET] Създаване на target variable за {days_ahead} ден напред...")
 
         # Цената след N дни
         self.data['Future_Price'] = self.data['Close'].shift(-days_ahead)
@@ -215,9 +215,9 @@ class StockDataPreprocessor:
         # Премахване на последните N реда (нямаме бъдещи данни за тях)
         self.data = self.data[:-days_ahead]
 
-        print(f"✅ Target variable създаден")
-        print(f"📈 Дни нагоре: {self.data['Price_Direction'].sum()}")
-        print(f"📉 Дни надолу: {len(self.data) - self.data['Price_Direction'].sum()}")
+        print(f"[OK] Target variable създаден")
+        print(f"[UP] Дни нагоре: {self.data['Price_Direction'].sum()}")
+        print(f"[DOWN] Дни надолу: {len(self.data) - self.data['Price_Direction'].sum()}")
 
         return self.data
 
@@ -235,7 +235,7 @@ class StockDataPreprocessor:
         pandas.DataFrame
             Нормализирани данни
         """
-        print("🔢 Нормализиране на данни...")
+        print("[NUM] Нормализиране на данни...")
 
         if columns_to_scale is None:
             # Вземаме всички числови колони освен Date и Price_Direction
@@ -253,7 +253,7 @@ class StockDataPreprocessor:
         # Обединяване на нормализираните и не-нормализираните данни
         self.scaled_data = pd.concat([non_scaled_data, scaled_df], axis=1)
 
-        print(f"✅ {len(columns_to_scale)} колони нормализирани")
+        print(f"[OK] {len(columns_to_scale)} колони нормализирани")
 
         return self.scaled_data
 
@@ -276,7 +276,7 @@ class StockDataPreprocessor:
         tuple
             (X, y) - входни последователности и изходни стойности
         """
-        print(f"🔄 Създаване на последователности с дължина {seq_length}...")
+        print(f"[RUN] Създаване на последователности с дължина {seq_length}...")
 
         if isinstance(data, pd.DataFrame):
             data = data.values
@@ -291,9 +291,9 @@ class StockDataPreprocessor:
 
         X, y = np.array(X), np.array(y)
 
-        print(f"✅ Създадени {len(X)} последователности")
-        print(f"📊 Форма на X: {X.shape}")
-        print(f"📊 Форма на y: {y.shape}")
+        print(f"[OK] Създадени {len(X)} последователности")
+        print(f"[INFO] Форма на X: {X.shape}")
+        print(f"[INFO] Форма на y: {y.shape}")
 
         return X, y
 
@@ -322,7 +322,7 @@ class StockDataPreprocessor:
         y_train = y[:split_index]
         y_test = y[split_index:]
 
-        print(f"📊 Разделяне на данни:")
+        print(f"[INFO] Разделяне на данни:")
         print(f"   Тренировъчни: {len(X_train)} примера ({train_size*100:.0f}%)")
         print(f"   Тестови: {len(X_test)} примера ({(1-train_size)*100:.0f}%)")
 
@@ -337,7 +337,7 @@ class StockDataPreprocessor:
 
 # Тестване на модула
 if __name__ == "__main__":
-    print("🚀 Тестване на Preprocessing Module\n")
+    print("[START] Тестване на Preprocessing Module\n")
 
     # Импортиране на data collector
     import sys
@@ -354,7 +354,7 @@ if __name__ == "__main__":
 
         # Изчисляване на индикатори
         data_with_indicators = preprocessor.calculate_technical_indicators()
-        print("\n📊 Колони след индикаторите:")
+        print("\n[INFO] Колони след индикаторите:")
         print(data_with_indicators.columns.tolist())
 
         # Създаване на target variable
@@ -363,7 +363,7 @@ if __name__ == "__main__":
         # Нормализиране
         normalized_data = preprocessor.normalize_data()
 
-        print("\n📊 Първите 3 реда от обработените данни:")
+        print("\n[INFO] Първите 3 реда от обработените данни:")
         print(normalized_data.head(3))
 
         # Създаване на последователности
@@ -376,4 +376,4 @@ if __name__ == "__main__":
         # Разделяне на train/test
         X_train, X_test, y_train, y_test = preprocessor.split_data(X, y, train_size=0.8)
 
-        print("\n✅ Данните са готови за модела!")
+        print("\n[OK] Данните са готови за модела!")

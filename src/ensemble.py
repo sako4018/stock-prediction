@@ -61,7 +61,7 @@ class EnsembleModel:
         """
         Тренира Random Forest модел.
         """
-        print("🌲 Трениране на Random Forest...")
+        print("[TREE] Трениране на Random Forest...")
         X_flat = self.prepare_flat_data(X_train)
 
         self.rf_model = RandomForestRegressor(
@@ -72,14 +72,14 @@ class EnsembleModel:
             n_jobs=-1
         )
         self.rf_model.fit(X_flat, y_train)
-        print("✅ Random Forest трениран!")
+        print("[OK] Random Forest трениран!")
         return self.rf_model
 
     def train_gb_model(self, X_train, y_train, n_estimators=100):
         """
         Тренира Gradient Boosting модел (XGBoost-style).
         """
-        print("🚀 Трениране на Gradient Boosting...")
+        print("[START] Трениране на Gradient Boosting...")
         X_flat = self.prepare_flat_data(X_train)
 
         self.gb_model = GradientBoostingRegressor(
@@ -90,15 +90,15 @@ class EnsembleModel:
             random_state=42
         )
         self.gb_model.fit(X_flat, y_train)
-        print("✅ Gradient Boosting трениран!")
+        print("[OK] Gradient Boosting трениран!")
         return self.gb_model
 
     def train_lgbm_model(self, X_train, y_train, n_estimators=200):
         """Тренира LightGBM модел."""
         if not HAS_LGBM:
-            print("⚠️ LightGBM не е инсталиран")
+            print("[WARN] LightGBM не е инсталиран")
             return None
-        print("🚀 Трениране на LightGBM...")
+        print("[START] Трениране на LightGBM...")
         X_flat = self.prepare_flat_data(X_train)
         self.lgbm_model = lgb.LGBMRegressor(
             n_estimators=n_estimators,
@@ -112,15 +112,15 @@ class EnsembleModel:
             verbose=-1
         )
         self.lgbm_model.fit(X_flat, y_train)
-        print("✅ LightGBM трениран!")
+        print("[OK] LightGBM трениран!")
         return self.lgbm_model
 
     def train_catboost_model(self, X_train, y_train, iterations=200):
         """Тренира CatBoost модел."""
         if not HAS_CATBOOST:
-            print("⚠️ CatBoost не е инсталиран")
+            print("[WARN] CatBoost не е инсталиран")
             return None
-        print("🐱 Трениране на CatBoost...")
+        print("[CAT] Трениране на CatBoost...")
         X_flat = self.prepare_flat_data(X_train)
         self.catboost_model = cb.CatBoostRegressor(
             iterations=iterations,
@@ -131,7 +131,7 @@ class EnsembleModel:
             verbose=0
         )
         self.catboost_model.fit(X_flat, y_train)
-        print("✅ CatBoost трениран!")
+        print("[OK] CatBoost трениран!")
         return self.catboost_model
 
     def predict(self, X, lstm_predictions=None):
@@ -198,7 +198,7 @@ class EnsembleModel:
         """
         Оценява ensemble модела.
         """
-        print("\n📊 Оценка на Ensemble модела...")
+        print("\n[INFO] Оценка на Ensemble модела...")
 
         ensemble_pred = self.predict(X_test, lstm_predictions)
 
@@ -240,7 +240,7 @@ class EnsembleModel:
             cat_acc = accuracy_score(direction_true, (cat_pred > 0.5).astype(int)) * 100
             results['catboost'] = {'accuracy': cat_acc}
 
-        print(f"\n📈 Резултати:")
+        print(f"\n[UP] Резултати:")
         print(f"   {'Модел':<25} {'Точност':<10}")
         print(f"   {'-'*35}")
         for name, metrics in results.items():
@@ -270,7 +270,7 @@ class EnsembleModel:
         with open(os.path.join(models_dir, f'{model_name}_config.json'), 'w') as f:
             json.dump(config, f, indent=4)
 
-        print(f"💾 Ensemble модели записани")
+        print(f"[SAVE] Ensemble модели записани")
 
     def load_models(self, model_name='ensemble'):
         """Зарежда записаните модели."""
@@ -299,4 +299,4 @@ class EnsembleModel:
             self.catboost_model = cb.CatBoostRegressor()
             self.catboost_model.load_model(cat_path)
 
-        print(f"✅ Ensemble модели заредени ({sum([self.rf_model, self.gb_model, self.lgbm_model, self.catboost_model])} tree models)")
+        print(f"[OK] Ensemble модели заредени ({sum([self.rf_model, self.gb_model, self.lgbm_model, self.catboost_model])} tree models)")

@@ -48,7 +48,7 @@ class StockBacktester:
         dict
             Accuracy, Precision, Recall, F1-score
         """
-        print("\n📊 Изчисляване на метрики за точност...\n")
+        print("\n[INFO] Изчисляване на метрики за точност...\n")
 
         # Конвертиране на regression predictions в classification (нагоре/надолу)
         # Ако предсказаната цена е > 0.5 (нормализирано) => нагоре (1), иначе надолу (0)
@@ -72,13 +72,13 @@ class StockBacktester:
         self.results['recall'] = recall * 100
         self.results['f1_score'] = f1 * 100
 
-        print(f"✅ Accuracy (Точност): {accuracy*100:.2f}%")
+        print(f"[OK] Accuracy (Точност): {accuracy*100:.2f}%")
         print(f"   → Колко често предсказваме правилно посоката")
-        print(f"\n✅ Precision (Прецизност): {precision*100:.2f}%")
+        print(f"\n[OK] Precision (Прецизност): {precision*100:.2f}%")
         print(f"   → От всички BUY сигнали, колко реално са се качили")
-        print(f"\n✅ Recall (Чувствителност): {recall*100:.2f}%")
+        print(f"\n[OK] Recall (Чувствителност): {recall*100:.2f}%")
         print(f"   → От всички покачвания, колко сме уловили")
-        print(f"\n✅ F1-Score: {f1*100:.2f}%")
+        print(f"\n[OK] F1-Score: {f1*100:.2f}%")
         print(f"   → Общ балансиран резултат\n")
 
         return self.results
@@ -102,7 +102,7 @@ class StockBacktester:
         numpy.array
             Масив със сигнали: 1 (BUY), -1 (SELL), 0 (HOLD)
         """
-        print(f"\n📈 Генериране на trading сигнали (threshold={threshold})...\n")
+        print(f"\n[UP] Генериране на trading сигнали (threshold={threshold})...\n")
 
         signals = np.zeros(len(self.predictions))
 
@@ -118,10 +118,10 @@ class StockBacktester:
         sell_count = np.sum(signals == -1)
         hold_count = np.sum(signals == 0)
 
-        print(f"📊 Генерирани сигнали:")
-        print(f"   🟢 BUY:  {buy_count} ({buy_count/len(signals)*100:.1f}%)")
-        print(f"   🔴 SELL: {sell_count} ({sell_count/len(signals)*100:.1f}%)")
-        print(f"   ⚪ HOLD: {hold_count} ({hold_count/len(signals)*100:.1f}%)\n")
+        print(f"[INFO] Генерирани сигнали:")
+        print(f"   [BUY]  {buy_count} ({buy_count/len(signals)*100:.1f}%)")
+        print(f"   [SELL] {sell_count} ({sell_count/len(signals)*100:.1f}%)")
+        print(f"   [HOLD] {hold_count} ({hold_count/len(signals)*100:.1f}%)\n")
 
         self.signals = signals
         return signals
@@ -140,7 +140,7 @@ class StockBacktester:
         dict
             Резултати от симулацията: total_return, final_capital, win_rate и др.
         """
-        print(f"\n💰 Симулация на trading с начален капитал ${self.initial_capital:,.2f}...\n")
+        print(f"\n[MONEY] Симулация на trading с начален капитал ${self.initial_capital:,.2f}...\n")
 
         capital = self.initial_capital
         position = 0  # 0 = нямаме акции, 1 = имаме акции
@@ -279,31 +279,31 @@ class StockBacktester:
 
         # Принтиране на резултати
         print("="*60)
-        print("📊 РЕЗУЛТАТИ ОТ СИМУЛАЦИЯТА")
+        print("[INFO] РЕЗУЛТАТИ ОТ СИМУЛАЦИЯТА")
         print("="*60)
-        print(f"\n💵 Финанси:")
+        print(f"\n[MONEY] Финанси:")
         print(f"   Начален капитал:  ${self.initial_capital:,.2f}")
         print(f"   Финален капитал:  ${final_capital:,.2f}")
         print(f"   Печалба/Загуба:   ${final_capital - self.initial_capital:,.2f}")
         print(f"   Total Return:     {total_return:+.2f}%")
-        print(f"\n📈 Търговия:")
+        print(f"\n[UP] Търговия:")
         print(f"   Общо сделки:      {total_trades}")
         print(f"   Печеливши:        {len(profitable_trades)} ({win_rate:.1f}%)")
         print(f"   Загубени:         {len(losing_trades)}")
-        print(f"\n🆚 Buy & Hold сравнение:")
+        print(f"\n[VS] Buy & Hold сравнение:")
         print(f"   Buy & Hold Return: {buy_and_hold_return:+.2f}%")
         print(f"   Нашата стратегия:  {total_return:+.2f}%")
         print(f"   Разлика:          {total_return - buy_and_hold_return:+.2f}%")
 
         if total_return > buy_and_hold_return:
-            print(f"\n   ✅ Печелим срещу Buy & Hold!")
+            print(f"\n   [OK] Печелим срещу Buy & Hold!")
         else:
-            print(f"\n   ❌ Buy & Hold е по-добра стратегия")
+            print(f"\n   [FAIL] Buy & Hold е по-добра стратегия")
 
-        print(f"\n📊 RISK METRICS:")
-        print(f"   Sharpe Ratio:     {sharpe_ratio:.2f} {'✅' if sharpe_ratio > 1 else '⚠️' if sharpe_ratio > 0 else '❌'}")
-        print(f"   Sortino Ratio:    {sortino_ratio:.2f} {'✅' if sortino_ratio > 1 else '⚠️' if sortino_ratio > 0 else '❌'}")
-        print(f"   Max Drawdown:     {max_drawdown:.2f}% {'✅' if max_drawdown > -20 else '⚠️' if max_drawdown > -40 else '❌'}")
+        print(f"\n[INFO] RISK METRICS:")
+        print(f"   Sharpe Ratio:     {sharpe_ratio:.2f} {'[OK]' if sharpe_ratio > 1 else '[WARN]' if sharpe_ratio > 0 else '[FAIL]'}")
+        print(f"   Sortino Ratio:    {sortino_ratio:.2f} {'[OK]' if sortino_ratio > 1 else '[WARN]' if sortino_ratio > 0 else '[FAIL]'}")
+        print(f"   Max Drawdown:     {max_drawdown:.2f}% {'[OK]' if max_drawdown > -20 else '[WARN]' if max_drawdown > -40 else '[FAIL]'}")
         print(f"   Volatility:       {volatility:.2f}%")
         print(f"   Calmar Ratio:     {calmar_ratio:.2f}")
 
@@ -320,7 +320,7 @@ class StockBacktester:
         save_path : str, optional
             Път за запазване на графиката
         """
-        print("\n📊 Създаване на визуализации...\n")
+        print("\n[INFO] Създаване на визуализации...\n")
 
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle('Backtesting Results', fontsize=16, fontweight='bold')
@@ -400,10 +400,10 @@ class StockBacktester:
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches='tight')
-            print(f"💾 Графика запазена: {save_path}")
+            print(f"[SAVE] Графика запазена: {save_path}")
         else:
             plt.savefig('backtest_results.png', dpi=150, bbox_inches='tight')
-            print(f"💾 Графика запазена: backtest_results.png")
+            print(f"[SAVE] Графика запазена: backtest_results.png")
 
         plt.close()
 
@@ -460,7 +460,7 @@ class WalkForwardValidator:
         dict
             Резултати от walk-forward validation
         """
-        print(f"\n🔄 Walk-Forward Validation")
+        print(f"\n[RUN] Walk-Forward Validation")
         print(f"   Train window: {self.train_window} дни")
         print(f"   Test window: {self.test_window} дни")
         print(f"   Step size: {self.step_size} дни")
@@ -578,7 +578,7 @@ class WalkForwardValidator:
             'fold_results': self.fold_results
         }
 
-        print(f"\n📊 Walk-Forward Summary:")
+        print(f"\n[INFO] Walk-Forward Summary:")
         print(f"   Folds: {fold}")
         print(f"   Avg Accuracy: {avg_accuracy:.1f}%")
         print(f"   Avg Return: {avg_return:+.2f}%")
@@ -590,7 +590,7 @@ class WalkForwardValidator:
 
 # Тестване на модула
 if __name__ == "__main__":
-    print("🚀 Тестване на Backtesting Module\n")
+    print("[START] Тестване на Backtesting Module\n")
 
     # Симулиране на данни
     n_samples = 200
@@ -623,4 +623,4 @@ if __name__ == "__main__":
     # Визуализация
     backtester.plot_results()
 
-    print("\n✅ Тестването завърши успешно!")
+    print("\n[OK] Тестването завърши успешно!")

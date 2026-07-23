@@ -48,8 +48,8 @@ export default function SignalsPanel({ ticker }: { ticker: string }) {
           }}>
             <span className={`text-sm font-bold ${signalColor(data.recommendation)}`}>{data.recommendation}</span>
           </div>
-          <BarGauge value={data.indicators.rsi.value} min={0} max={100} label="RSI (14)" />
-          <BarGauge value={data.indicators.stochastic.k} min={0} max={100} label="Stochastic %K" />
+          <BarGauge value={data.indicators.rsi?.value ?? 50} min={0} max={100} label="RSI (14)" />
+          <BarGauge value={data.indicators.stochastic?.k ?? 50} min={0} max={100} label="Stochastic %K" />
           {['macd', 'bollinger', 'atr'].map(k => (
             <div key={k} className="flex items-center justify-between text-xxs py-1" style={{ borderTop: '1px solid rgb(var(--color-line) / 0.3)' }}>
               <span style={{ color: 'rgb(var(--color-txt-dim))' }}>{k.toUpperCase()}</span>

@@ -24,13 +24,13 @@ import os
 import json
 
 # Проверка дали има GPU
-print("🔍 Проверка на GPU...")
+print("[CHECK] Проверка на GPU...")
 if torch.cuda.is_available():
-    print(f"✅ Открито GPU: {torch.cuda.get_device_name(0)}")
+    print(f"[OK] Открито GPU: {torch.cuda.get_device_name(0)}")
     print(f"   CUDA версия: {torch.version.cuda}")
     device = torch.device('cuda')
 else:
-    print("⚠️ GPU не е открито, използва се CPU")
+    print("[WARN] GPU не е открито, използва се CPU")
     device = torch.device('cpu')
 
 
@@ -184,13 +184,13 @@ class StockPredictionModel:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         self.criterion = nn.MSELoss()
 
-        print("✅ Модел създаден успешно!")
-        print("\n📊 Архитектура на модела:")
+        print("[OK] Модел създаден успешно!")
+        print("\n[INFO] Архитектура на модела:")
         print(self.model)
 
         # Брой параметри
         total_params = sum(p.numel() for p in self.model.parameters())
-        print(f"\n💾 Общо параметри: {total_params:,}")
+        print(f"\n[SAVE] Общо параметри: {total_params:,}")
 
         return self.model
 
@@ -219,13 +219,13 @@ class StockPredictionModel:
             История на обучението
         """
         if self.model is None:
-            raise ValueError("❌ Моделът не е създаден! Извикай build_lstm_model() първо.")
+            raise ValueError("[FAIL] Моделът не е създаден! Извикай build_lstm_model() първо.")
 
-        print(f"\n🚀 Стартиране на тренировка...")
-        print(f"📊 Тренировъчни данни: {X_train.shape}")
-        print(f"📊 Валидационни данни: {X_val.shape}")
-        print(f"⚙️ Epochs: {epochs}, Batch size: {batch_size}")
-        print(f"🖥️ Устройство: {self.device}")
+        print(f"\n[START] Стартиране на тренировка...")
+        print(f"[INFO] Тренировъчни данни: {X_train.shape}")
+        print(f"[INFO] Валидационни данни: {X_val.shape}")
+        print(f"[CONFIG] Epochs: {epochs}, Batch size: {batch_size}")
+        print(f"[DEVICE] Устройство: {self.device}")
 
         # Конвертиране в PyTorch tensors
         X_train_tensor = torch.FloatTensor(X_train).to(self.device)
@@ -247,7 +247,7 @@ class StockPredictionModel:
         os.makedirs(models_dir, exist_ok=True)
         checkpoint_path = os.path.join(models_dir, 'best_model.pt')
 
-        print("\n🎯 Започва обучението...\n")
+        print("\n[TARGET] Започва обучението...\n")
 
         # Тренировъчен loop
         for epoch in range(epochs):
@@ -294,14 +294,14 @@ class StockPredictionModel:
                 patience_counter += 1
 
             if patience_counter >= patience:
-                print(f"\n⚠️ Early stopping triggered на epoch {epoch+1}")
+                print(f"\n[WARN] Early stopping triggered на epoch {epoch+1}")
                 print(f"   Няма подобрение след {patience} епохи")
                 # Зареждане на най-добрия модел
                 self.model.load_state_dict(torch.load(checkpoint_path))
                 break
 
-        print("\n✅ Обучението завърши успешно!")
-        print(f"📊 Най-добър validation loss: {best_val_loss:.6f}")
+        print("\n[OK] Обучението завърши успешно!")
+        print(f"[INFO] Най-добър validation loss: {best_val_loss:.6f}")
 
         return self.history
 
@@ -320,7 +320,7 @@ class StockPredictionModel:
             Предсказани стойности
         """
         if self.model is None:
-            raise ValueError("❌ Моделът не е създаден или зареден!")
+            raise ValueError("[FAIL] Моделът не е създаден или зареден!")
 
         self.model.eval()
         with torch.no_grad():
@@ -344,7 +344,7 @@ class StockPredictionModel:
         dict
             Метрики за точност (MSE, MAE, RMSE, MAPE)
         """
-        print("\n📊 Оценка на модела...")
+        print("\n[INFO] Оценка на модела...")
 
         # Предсказване
         y_pred = self.predict(X_test)
@@ -370,7 +370,7 @@ class StockPredictionModel:
             'Direction_Accuracy': direction_accuracy
         }
 
-        print("\n📈 Резултати:")
+        print("\n[UP] Резултати:")
         print(f"   MSE (Mean Squared Error): {mse:.6f}")
         print(f"   MAE (Mean Absolute Error): {mae:.6f}")
         print(f"   RMSE (Root Mean Squared Error): {rmse:.6f}")
@@ -389,7 +389,7 @@ class StockPredictionModel:
             Име на модела (без разширение)
         """
         if self.model is None:
-            raise ValueError("❌ Няма модел за записване!")
+            raise ValueError("[FAIL] Няма модел за записване!")
 
         models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
         os.makedirs(models_dir, exist_ok=True)
@@ -397,7 +397,7 @@ class StockPredictionModel:
         # Записване на модела (PyTorch format)
         model_path = os.path.join(models_dir, f'{model_name}.pt')
         torch.save(self.model.state_dict(), model_path)
-        print(f"💾 Модел записан: {model_path}")
+        print(f"[SAVE] Модел записан: {model_path}")
 
         # Записване на конфигурацията
         config = {
@@ -410,14 +410,14 @@ class StockPredictionModel:
         config_path = os.path.join(models_dir, f'{model_name}_config.json')
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=4)
-        print(f"📄 Конфигурация записана: {config_path}")
+        print(f"[FILE] Конфигурация записана: {config_path}")
 
         # Записване на историята на обучението
         if self.history:
             history_path = os.path.join(models_dir, f'{model_name}_history.json')
             with open(history_path, 'w') as f:
                 json.dump(self.history, f, indent=4)
-            print(f"📊 История записана: {history_path}")
+            print(f"[INFO] История записана: {history_path}")
 
     def load_model(self, model_name='stock_lstm_model'):
         """
@@ -433,7 +433,7 @@ class StockPredictionModel:
         # Зареждане на конфигурацията
         config_path = os.path.join(models_dir, f'{model_name}_config.json')
         if not os.path.exists(config_path):
-            raise FileNotFoundError(f"❌ Конфигурацията не е намерена: {config_path}")
+            raise FileNotFoundError(f"[FAIL] Конфигурацията не е намерена: {config_path}")
 
         with open(config_path, 'r') as f:
             config = json.load(f)
@@ -446,7 +446,7 @@ class StockPredictionModel:
 
         model_path = os.path.join(models_dir, f'{model_name}.pt')
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"❌ Моделът не е намерен: {model_path}")
+            raise FileNotFoundError(f"[FAIL] Моделът не е намерен: {model_path}")
 
         # Зареждане с backward compatibility
         saved_state = torch.load(model_path, map_location=self.device)
@@ -454,13 +454,13 @@ class StockPredictionModel:
         try:
             # Опит за директно зареждане (съвместима архитектура)
             self.model.load_state_dict(saved_state)
-            print(f"✅ Модел зареден: {model_path}")
+            print(f"[OK] Модел зареден: {model_path}")
         except RuntimeError:
             # Ако има mismatch, зареждаме с partial weights
-            print(f"⚠️ Архитектурата е променена. Зареждане с partial weights...")
+            print(f"[WARN] Архитектурата е променена. Зареждане с partial weights...")
             missing, unexpected = self.model.load_state_dict(saved_state, strict=False)
             print(f"   Липсващи ключове: {len(missing)} (нови слоеве)")
-            print(f"   💡 Препоръка: Претренирай модела за по-добри резултати")
+            print(f"   [TIP] Препоръка: Претренирай модела за по-добри резултати")
 
         self.model.eval()
 
@@ -469,7 +469,7 @@ class StockPredictionModel:
 
 # Тестване на модула
 if __name__ == "__main__":
-    print("🚀 Тестване на Model Module\n")
+    print("[START] Тестване на Model Module\n")
 
     # Симулиране на данни за бързо тестване
     sequence_length = 60
@@ -497,4 +497,4 @@ if __name__ == "__main__":
     # Записване
     model.save_model('test_model')
 
-    print("\n✅ Тестването завърши успешно!")
+    print("\n[OK] Тестването завърши успешно!")

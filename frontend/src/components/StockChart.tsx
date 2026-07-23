@@ -107,7 +107,7 @@ export default function StockChart({ ticker }: StockChartProps) {
           <span>H <span className="text-up">{hoverData.High?.toFixed(2)}</span></span>
           <span>L <span className="text-down">{hoverData.Low?.toFixed(2)}</span></span>
           <span>C <span className="text-txt font-medium">{hoverData.Close?.toFixed(2)}</span></span>
-          <span>Vol <span className="text-txt-dim">{(hoverData.Volume / 1e6).toFixed(1)}M</span></span>
+          <span>Vol <span className="text-txt-dim">{hoverData.Volume != null ? `${(hoverData.Volume / 1e6).toFixed(1)}M` : '--'}</span></span>
           {hoverData.SMA_20 && <span>SMA20 <span className="text-accent">{hoverData.SMA_20?.toFixed(2)}</span></span>}
         </div>
       )}
@@ -183,7 +183,7 @@ export default function StockChart({ ticker }: StockChartProps) {
               <g key={i}>
                 <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke={c.grid} strokeWidth={0.5} />
                 <text x={W - pad.r + 4} y={y + 3} fill={c.label} fontSize={9} fontFamily="JetBrains Mono, monospace">
-                  ${price.toFixed(2)}
+                  ${price?.toFixed(2)}
                 </text>
               </g>
             )

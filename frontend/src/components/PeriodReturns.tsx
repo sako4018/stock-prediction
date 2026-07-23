@@ -27,7 +27,7 @@ export default function PeriodReturns({ ticker }: { ticker: string }) {
           <div key={p} className="flex flex-col items-center px-3 py-1.5 min-w-[52px]" style={{ borderRight: '1px solid rgb(var(--color-line) / 0.3)' }}>
             <span className="text-xxs font-medium" style={{ color: 'rgb(var(--color-txt-muted))' }}>{p}</span>
             <span className="text-xs font-bold tabular-nums" style={{ color }}>
-              {val !== null ? `${isUp ? '+' : ''}${val.toFixed(2)}%` : '--'}
+              {val != null ? `${isUp ? '+' : ''}${val.toFixed(2)}%` : '--'}
             </span>
           </div>
         )

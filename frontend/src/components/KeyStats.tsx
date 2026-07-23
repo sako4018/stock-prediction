@@ -38,7 +38,7 @@ export default function KeyStats({ ticker }: { ticker: string }) {
       <p className="section-header">Key Statistics</p>
       {p.previous_close && <StatRow label="Previous Close" value={`$${p.previous_close.toFixed(2)}`} />}
       {open && <StatRow label="Open" value={`$${open.toFixed(2)}`} />}
-      {p.change && <StatRow label="Change" value={`${p.change >= 0 ? '+' : ''}$${p.change.toFixed(2)} (${p.change_percent >= 0 ? '+' : ''}${p.change_percent?.toFixed(2)}%)`} />}
+      {p.change != null && <StatRow label="Change" value={`${p.change >= 0 ? '+' : ''}$${p.change?.toFixed(2)} (${p.change_percent >= 0 ? '+' : ''}${p.change_percent?.toFixed(2)}%)`} />}
       {c.market_cap && <StatRow label="Market Cap" value={fmt(c.market_cap, 0)} />}
       {c.sector && <StatRow label="Sector" value={c.sector} />}
       {c.industry && <StatRow label="Industry" value={c.industry} />}

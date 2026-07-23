@@ -56,7 +56,7 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
         <span className={`tabular-nums font-medium ${data.price.change >= 0 ? 'text-up' : 'text-down'}`}>
           <AnimatedNumber value={data.price.current_price} prefix="$" className="font-medium" />
           <span className="ml-1.5 text-xxs">
-            {data.price.change >= 0 ? '+' : ''}{data.price.change_percent.toFixed(2)}%
+            {data.price.change >= 0 ? '+' : ''}{data.price.change_percent?.toFixed(2)}%
           </span>
         </span>
       </div>
@@ -93,7 +93,7 @@ export default function CompanyInfo({ ticker, compact }: CompanyInfoProps) {
         <div className="grid grid-cols-2 gap-2">
           {[
             { label: 'Mkt Cap', value: formatCap(data.company.market_cap) },
-            { label: 'Prev Close', value: `$${data.price.previous_close.toFixed(2)}` },
+            { label: 'Prev Close', value: `$${data.price.previous_close?.toFixed(2)}` },
             { label: 'Industry', value: data.company.industry || '—' },
           ].map((item, i) => (
             <div key={i} className="bg-surface-elevated rounded px-2.5 py-1.5">

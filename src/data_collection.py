@@ -45,14 +45,14 @@ class StockDataCollector:
             DataFrame с колони: Open, High, Low, Close, Volume
         """
         try:
-            print(f"📊 Изтегляне на данни за {self.ticker}...")
+            print(f"[INFO] Изтегляне на данни за {self.ticker}...")
 
             # Опитваме с първоначалния interval
             self.data = self.stock.history(period=self.period, interval=self.interval)
 
             # Ако няма данни, опитваме с '1d' interval
             if self.data is None or self.data.empty:
-                print(f"⚠️ Няма данни с interval={self.interval}, опитваме с 1d...")
+                print(f"[WARN] Няма данни с interval={self.interval}, опитваме с 1d...")
                 self.data = self.stock.history(period=self.period, interval='1d')
 
             # Ако пак няма данни, опитваме с по-дълъг период
@@ -60,19 +60,19 @@ class StockDataCollector:
                 fallback_periods = {'1mo': '3mo', '3mo': '6mo', '6mo': '1y'}
                 fallback = fallback_periods.get(self.period)
                 if fallback:
-                    print(f"⚠️ Опитваме с period={fallback}...")
+                    print(f"[WARN] Опитваме с period={fallback}...")
                     self.data = self.stock.history(period=fallback, interval='1d')
 
             if self.data is None or self.data.empty:
-                print(f"❌ Няма данни за {self.ticker}")
+                print(f"[FAIL] Няма данни за {self.ticker}")
                 return None
 
             # Почистване на данните
             self.data = self.data[['Open', 'High', 'Low', 'Close', 'Volume']]
             self.data.reset_index(inplace=True)
 
-            print(f"✅ Свалени {len(self.data)} реда данни")
-            print(f"📅 От {self.data['Date'].min()} до {self.data['Date'].max()}")
+            print(f"[OK] Свалени {len(self.data)} реда данни")
+            print(f"[DATE] От {self.data['Date'].min()} до {self.data['Date'].max()}")
 
             # Запазване в CSV файл
             if save_to_csv:
@@ -83,12 +83,12 @@ class StockDataCollector:
                 filepath = os.path.join(data_dir, filename)
 
                 self.data.to_csv(filepath, index=False)
-                print(f"💾 Данните са запазени в: {filepath}")
+                print(f"[SAVE] Данните са запазени в: {filepath}")
 
             return self.data
 
         except Exception as e:
-            print(f"❌ Грешка при изтегляне на данни: {e}")
+            print(f"[FAIL] Грешка при изтегляне на данни: {e}")
             return None
 
     def get_real_time_price(self):
@@ -128,7 +128,7 @@ class StockDataCollector:
             return result
 
         except Exception as e:
-            print(f"❌ Грешка при взимане на real-time цена: {e}")
+            print(f"[FAIL] Грешка при взимане на real-time цена: {e}")
             return None
 
     def get_company_info(self):
@@ -157,7 +157,7 @@ class StockDataCollector:
             return company_info
 
         except Exception as e:
-            print(f"❌ Грешка при взимане на информация: {e}")
+            print(f"[FAIL] Грешка при взимане на информация: {e}")
             return None
 
     def load_saved_data(self, filename=None):
@@ -183,22 +183,22 @@ class StockDataCollector:
             filepath = os.path.join(data_dir, filename)
 
             if not os.path.exists(filepath):
-                print(f"❌ Файлът {filepath} не съществува")
+                print(f"[FAIL] Файлът {filepath} не съществува")
                 return None
 
             self.data = pd.read_csv(filepath, parse_dates=['Date'])
-            print(f"✅ Заредени {len(self.data)} реда от {filepath}")
+            print(f"[OK] Заредени {len(self.data)} реда от {filepath}")
 
             return self.data
 
         except Exception as e:
-            print(f"❌ Грешка при зареждане на данни: {e}")
+            print(f"[FAIL] Грешка при зареждане на данни: {e}")
             return None
 
 
 # Тестване на модула
 if __name__ == "__main__":
-    print("🚀 Тестване на Data Collection Module\n")
+    print("[START] Тестване на Data Collection Module\n")
 
     # Създаване на collector за Apple акции
     collector = StockDataCollector(ticker='AAPL', period='6mo', interval='1d')
@@ -207,14 +207,14 @@ if __name__ == "__main__":
     data = collector.fetch_stock_data()
 
     if data is not None:
-        print("\n📊 Първите 5 реда:")
+        print("\n[INFO] Първите 5 реда:")
         print(data.head())
 
-        print("\n📊 Последните 5 реда:")
+        print("\n[INFO] Последните 5 реда:")
         print(data.tail())
 
     # Взимане на real-time цена
-    print("\n💹 Real-time информация:")
+    print("\n[LIVE] Real-time информация:")
     price_info = collector.get_real_time_price()
 
     if price_info:
@@ -223,7 +223,7 @@ if __name__ == "__main__":
         print(f"Промяна: {price_info['change']:+.2f} ({price_info['change_percent']:+.2f}%)")
 
     # Информация за компанията
-    print("\n🏢 Информация за компанията:")
+    print("\n[INFO] Информация за компанията:")
     company = collector.get_company_info()
 
     if company:

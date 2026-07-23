@@ -117,5 +117,5 @@ def export_signals_history(ticker, signals_data, directory=None):
         df = pd.DataFrame([signals_data])
 
     df.to_csv(filepath, index=False)
-    print(f"📊 Signals CSV записан: {filepath}")
+    print(f"[INFO] Signals CSV записан: {filepath}")
     return filepath
