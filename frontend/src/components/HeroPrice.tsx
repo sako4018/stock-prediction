@@ -40,9 +40,11 @@ export default function HeroPrice({ ticker }: { ticker: string }) {
     return () => clearInterval(i)
   }, [ticker])
 
-  if (!data) return <span style={{ color: 'rgb(var(--color-txt-muted))' }}>Loading...</span>
+  if (!data || data.current_price == null) return <span style={{ color: 'rgb(var(--color-txt-muted))' }}>Loading...</span>
 
-  const up = data.change >= 0
+  const up = (data.change || 0) >= 0
+  const change = data.change || 0
+  const changePercent = data.change_percent || 0
 
   return (
     <div className="flex items-baseline gap-3">
@@ -54,14 +56,14 @@ export default function HeroPrice({ ticker }: { ticker: string }) {
         <AnimatedPrice value={data.current_price} />
       </span>
       <span className="text-sm font-medium tabular-nums" style={{ color: up ? 'rgb(var(--color-up))' : 'rgb(var(--color-down))' }}>
-        {up ? '+' : ''}<AnimatedPrice value={data.change} decimals={2} />
+        {up ? '+' : ''}<AnimatedPrice value={change} decimals={2} />
       </span>
       <span className="text-xxs font-semibold px-2 py-0.5 rounded" style={{
         fontFamily: '"JetBrains Mono", monospace',
         background: up ? 'rgb(var(--color-up) / 0.08)' : 'rgb(var(--color-down) / 0.08)',
         color: up ? 'rgb(var(--color-up))' : 'rgb(var(--color-down))',
       }}>
-        {up ? '▲' : '▼'} {Math.abs(data.change_percent).toFixed(2)}%
+        {up ? '▲' : '▼'} {Math.abs(changePercent).toFixed(2)}%
       </span>
     </div>
   )

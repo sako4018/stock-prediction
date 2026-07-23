@@ -13,6 +13,7 @@ import TickerTape from './components/TickerTape'
 import PortfolioOptimizer from './components/PortfolioOptimizer'
 import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
+import PeriodReturns from './components/PeriodReturns'
 import ErrorBoundary from './components/ErrorBoundary'
 
 const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
@@ -135,6 +136,10 @@ function AppContent() {
 
         <TickerTape />
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto" style={{ background: 'var(--bg-app)' }}>
+          {/* Period returns bar */}
+          <div className="mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgb(var(--color-surface-elevated))', border: '1px solid rgb(var(--color-line))' }}>
+            <PeriodReturns ticker={ticker} />
+          </div>
           {renderView()}
         </main>
       </div>

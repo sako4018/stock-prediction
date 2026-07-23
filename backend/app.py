@@ -209,6 +209,55 @@ def get_stock_history(ticker: str, period: str = "1y", interval: str = "1d"):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/stocks/{ticker}/returns")
+def get_period_returns(ticker: str):
+    """Връща доходност за различни периоди: 1D, 5D, 1M, 3M, 6M, YTD, 1Y, 5Y."""
+    try:
+        collector = StockDataCollector(ticker=ticker, period="5y", interval="1d")
+        data = collector.fetch_stock_data(save_to_csv=False)
+
+        if data is None or len(data) == 0:
+            raise HTTPException(status_code=404, detail=f"No data for {ticker}")
+
+        from datetime import datetime, timedelta
+        import pandas as pd
+
+        data['Date'] = pd.to_datetime(data['Date'])
+        data = data.sort_values('Date').reset_index(drop=True)
+        current_price = float(data['Close'].iloc[-1])
+        today = data['Date'].iloc[-1]
+
+        periods = {
+            '1D': 1, '5D': 5, '1M': 30, '3M': 90,
+            '6M': 180, 'YTD': None, '1Y': 365, '5Y': 1825
+        }
+
+        returns = {}
+        for name, days in periods.items():
+            if name == 'YTD':
+                start = pd.Timestamp(today.year, 1, 1)
+            else:
+                start = today - timedelta(days=days)
+
+            mask = data['Date'] >= start
+            if mask.any():
+                old_price = float(data.loc[mask, 'Close'].iloc[0])
+                pct = ((current_price - old_price) / old_price) * 100
+                returns[name] = round(pct, 2)
+            else:
+                returns[name] = None
+
+        return {
+            "ticker": ticker.upper(),
+            "current_price": current_price,
+            "returns": returns
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/stocks/{ticker}/predict")
 def predict_stock(ticker: str, period: str = "2y"):
     """Прави ML предсказание за акцията."""
