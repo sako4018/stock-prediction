@@ -65,6 +65,7 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+graphify-out/
 node_modules/
 frontend/node_modules/
 frontend/nul

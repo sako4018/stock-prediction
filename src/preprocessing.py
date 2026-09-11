@@ -15,6 +15,14 @@ from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings('ignore')
 
+# Колони, които са target-и, а не features. Никога не влизат в X —
+# Price_Direction[t] е точно отговорът, който моделът трябва да предскаже.
+TARGET_COLUMNS = ['Future_Price', 'Price_Direction']
+
+# Колоната, която моделът предсказва: 1 = утре нагоре, 0 = утре надолу.
+TARGET_COLUMN = 'Price_Direction'
+
+
 class StockDataPreprocessor:
     """
     Клас за обработка на данни за акции и създаване на features.
@@ -204,20 +212,27 @@ class StockDataPreprocessor:
         """
         print(f"[TARGET] Създаване на target variable за {days_ahead} ден напред...")
 
+        self.days_ahead = days_ahead
+
         # Цената след N дни
-        self.data['Future_Price'] = self.data['Close'].shift(-days_ahead)
+        future = self.data['Close'].shift(-days_ahead)
+        self.data['Future_Price'] = future
 
-        # Посока на промяната (1 = нагоре, 0 = надолу)
-        self.data['Price_Direction'] = (
-            self.data['Future_Price'] > self.data['Close']
-        ).astype(int)
+        # Посока на промяната (1 = нагоре, 0 = надолу).
+        # Последните N реда остават NaN — за тях бъдещето още не е настъпило.
+        # НЕ ги режем: последният ред е днешният ден и от него се прави
+        # предсказанието за утре. Тренировката сама ги пропуска.
+        self.data['Price_Direction'] = np.where(
+            future.isna(), np.nan, (future > self.data['Close']).astype(float)
+        )
 
-        # Премахване на последните N реда (нямаме бъдещи данни за тях)
-        self.data = self.data[:-days_ahead]
+        up = int(np.nansum(self.data['Price_Direction']))
+        labelled = int(self.data['Price_Direction'].notna().sum())
 
         print(f"[OK] Target variable създаден")
-        print(f"[UP] Дни нагоре: {self.data['Price_Direction'].sum()}")
-        print(f"[DOWN] Дни надолу: {len(self.data) - self.data['Price_Direction'].sum()}")
+        print(f"[UP] Дни нагоре: {up}")
+        print(f"[DOWN] Дни надолу: {labelled - up}")
+        print(f"[INFO] {days_ahead} ред(а) без етикет (най-новите) — за предсказване")
 
         return self.data
 
@@ -238,9 +253,11 @@ class StockDataPreprocessor:
         print("[NUM] Нормализиране на данни...")
 
         if columns_to_scale is None:
-            # Вземаме всички числови колони освен Date и Price_Direction
+            # Всички числови колони освен Date и target-ите.
+            # Target колоните не са features и не бива да се скалират.
             columns_to_scale = self.data.select_dtypes(include=[np.number]).columns.tolist()
-            columns_to_scale = [col for col in columns_to_scale if col not in ['Price_Direction']]
+            columns_to_scale = [col for col in columns_to_scale
+                                if col not in TARGET_COLUMNS]
 
         # Запазване на не-нормализираните колони
         non_scaled_cols = [col for col in self.data.columns if col not in columns_to_scale]
@@ -257,45 +274,138 @@ class StockDataPreprocessor:
 
         return self.scaled_data
 
-    def create_sequences(self, data, seq_length=60):
+    def get_feature_columns(self):
+        """
+        Имената на колоните, които влизат в модела като features.
+
+        Изключва Date (не е число) и target колоните — ако Price_Direction
+        остане във features, моделът чете отговора направо от входа.
+        """
+        source = self.scaled_data if self.scaled_data is not None else self.data
+        excluded = set(['Date'] + TARGET_COLUMNS)
+        return [c for c in source.columns if c not in excluded]
+
+    def create_sequences(self, features, target, seq_length=60):
         """
         Създава последователности за LSTM модела.
 
-        LSTM модела се учи от последователности от данни.
-        Например: взима последните 60 дни за да предскаже следващия ден.
+        Подравняване (без надничане в бъдещето):
+            X[k] = features[k : k+seq_length]   -> дни k .. k+seq_length-1
+            y[k] = target[k+seq_length-1]       -> посоката за последния ден
+
+        Последният ден в прозореца е "днес". Всичко в X е известно при
+        затваряне на днешния ден, а y казва дали утре затваря по-високо.
 
         Параметри:
         ----------
-        data : pandas.DataFrame или numpy.array
-            Подготвени данни
+        features : numpy.array или pandas.DataFrame
+            Само feature колони (без target-ите)
+        target : numpy.array или pandas.Series
+            Target стойност за всеки ред (Price_Direction: 0/1)
         seq_length : int
             Дължина на последователността (по подразбиране 60 дни)
 
         Връща:
         -------
         tuple
-            (X, y) - входни последователности и изходни стойности
+            (X, y, end_idx) - последователности, target-и и индексът на
+            последния ден от всеки прозорец (за подравняване на цени/дати)
         """
         print(f"[RUN] Създаване на последователности с дължина {seq_length}...")
 
-        if isinstance(data, pd.DataFrame):
-            data = data.values
+        if isinstance(features, pd.DataFrame):
+            features = features.values
+        if isinstance(target, (pd.Series, pd.DataFrame)):
+            target = target.values
 
-        X, y = [], []
+        features = np.asarray(features, dtype=np.float32)
+        target = np.asarray(target).ravel()
 
-        for i in range(seq_length, len(data)):
-            # X: последните 60 дни данни
-            X.append(data[i-seq_length:i])
-            # y: таргет стойността (Future_Price или Price_Direction)
-            y.append(data[i, -1])  # Последната колона е target
+        if len(features) != len(target):
+            raise ValueError(
+                f"[FAIL] features ({len(features)}) и target ({len(target)}) "
+                f"имат различна дължина"
+            )
+        if len(features) < seq_length:
+            raise ValueError(
+                f"[FAIL] Само {len(features)} реда, а трябват поне {seq_length}"
+            )
 
-        X, y = np.array(X), np.array(y)
+        end_idx = np.arange(seq_length - 1, len(features))
+        X = np.stack([features[i - seq_length + 1: i + 1] for i in end_idx])
+        y = target[end_idx].astype(np.float32)
 
         print(f"[OK] Създадени {len(X)} последователности")
         print(f"[INFO] Форма на X: {X.shape}")
         print(f"[INFO] Форма на y: {y.shape}")
+        print(f"[INFO] Баланс на target: {y.mean()*100:.1f}% нагоре, "
+              f"{(1-y.mean())*100:.1f}% надолу")
 
-        return X, y
+        return X, y, end_idx
+
+    def prepare_model_data(self, seq_length=60):
+        """
+        Единствената правилна входна точка за модела.
+
+        Сама избира feature колоните, target-а и подравнените реални цени,
+        така че никой извикващ да не reconstruct-ва това ръчно (и да сбърка).
+
+        Връща:
+        -------
+        tuple
+            (X, y, prices)
+            X      : (n, seq_length, n_features) — нормализирани features
+            y      : (n,) — 1 ако утре затваря по-високо, иначе 0
+            prices : (n,) — реалната Close цена на последния ден от прозореца
+        """
+        if self.scaled_data is None:
+            raise ValueError("[FAIL] Първо извикай normalize_data()")
+        if TARGET_COLUMN not in self.data.columns:
+            raise ValueError("[FAIL] Първо извикай create_target_variable()")
+
+        feature_cols = self.get_feature_columns()
+        target = self.data[TARGET_COLUMN].values.astype(float)
+
+        # Най-новите редове нямат етикет (бъдещето още не е настъпило) —
+        # те се ползват само за предсказване, не за тренировка.
+        labelled = np.flatnonzero(~np.isnan(target))
+        if len(labelled) == 0:
+            raise ValueError("[FAIL] Няма нито един ред с етикет")
+        end = labelled[-1] + 1
+
+        features = self.scaled_data[feature_cols].values[:end]
+        target = target[:end]
+
+        X, y, end_idx = self.create_sequences(features, target, seq_length)
+        prices = self.data['Close'].values[:end][end_idx]
+
+        return X, y, prices
+
+    def get_latest_sequence(self, seq_length=60):
+        """
+        Последният прозорец от features — включително днешния ден.
+
+        Това е входът за реално предсказание: моделът гледа последните
+        seq_length дни (последният е днес) и казва дали утре затваря по-високо.
+
+        Връща:
+        -------
+        numpy.array
+            (1, seq_length, n_features), готов за model.predict()
+        """
+        if self.scaled_data is None:
+            raise ValueError("[FAIL] Първо извикай normalize_data()")
+
+        feature_cols = self.get_feature_columns()
+        features = self.scaled_data[feature_cols].values
+
+        if len(features) < seq_length:
+            raise ValueError(
+                f"[FAIL] Само {len(features)} реда, а трябват поне {seq_length}"
+            )
+
+        window = features[-seq_length:]
+        return window.reshape(1, seq_length, -1).astype(np.float32)
 
     def split_data(self, X, y, train_size=0.8):
         """
@@ -368,10 +478,7 @@ if __name__ == "__main__":
 
         # Създаване на последователности
         # Подготовка за LSTM модела
-        feature_cols = [col for col in normalized_data.columns if col not in ['Date']]
-        model_data = normalized_data[feature_cols].values
-
-        X, y = preprocessor.create_sequences(model_data, seq_length=60)
+        X, y, prices = preprocessor.prepare_model_data(seq_length=60)
 
         # Разделяне на train/test
         X_train, X_test, y_train, y_test = preprocessor.split_data(X, y, train_size=0.8)

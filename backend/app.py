@@ -284,16 +284,15 @@ def predict_stock(ticker: str, period: str = "2y"):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        # Подготовка на последователности
-        scaled_data = preprocessor.scaled_data
-        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
-        model_data = scaled_data[feature_cols].values
+        # Подготовка на последователности (target = посока 0/1)
+        feature_cols = preprocessor.get_feature_columns()
+        model_data = preprocessor.scaled_data[feature_cols].values
 
         seq_length = 60
         if len(model_data) < seq_length:
             raise HTTPException(status_code=400, detail="Not enough data for prediction")
 
-        X, y = preprocessor.create_sequences(model_data, seq_length=seq_length)
+        X, y, prices = preprocessor.prepare_model_data(seq_length=seq_length)
 
         # Зареждане на модел
         model = StockPredictionModel(sequence_length=seq_length, n_features=X.shape[2])
@@ -311,20 +310,15 @@ def predict_stock(ticker: str, period: str = "2y"):
             model.train_model(X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
             model.save_model(model_name)
 
-        # Предсказание
-        latest_data = model_data[-seq_length:].reshape(1, seq_length, -1)
-        prediction = model.predict(latest_data)
-        predicted_value = prediction[0][0]
+        # Предсказание за утре, от прозорец завършващ с днешния ден
+        latest_data = preprocessor.get_latest_sequence(seq_length)
+        predicted_value = float(model.predict(latest_data)[0][0])
 
         current_price = data['Close'].values[-1]
 
-        # Определяне на сигнал
-        if predicted_value > 0.5:
-            signal = "BUY"
-            confidence = (predicted_value - 0.5) * 200
-        else:
-            signal = "SELL"
-            confidence = (0.5 - predicted_value) * 200
+        # predicted_value е вероятност за покачване, 0.5 е неутрално
+        signal = "BUY" if predicted_value > 0.5 else "SELL"
+        confidence = abs(predicted_value - 0.5) * 200
 
         return {
             "ticker": ticker.upper(),
@@ -358,16 +352,15 @@ def get_combined_signal(ticker: str, period: str = "2y"):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        scaled_data = preprocessor.scaled_data
-        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
-        model_data = scaled_data[feature_cols].values
+        feature_cols = preprocessor.get_feature_columns()
+        model_data = preprocessor.scaled_data[feature_cols].values
 
         # === 2. ML PREDICTION ===
         ml_prediction = 0.5
         model_metrics = {}
 
         if len(model_data) >= 60:
-            X, y = preprocessor.create_sequences(model_data, seq_length=60)
+            X, y, prices = preprocessor.prepare_model_data(seq_length=60)
             split_idx = int(len(X) * 0.9)
             X_train, X_val = X[:split_idx], X[split_idx:]
             y_train, y_val = y[:split_idx], y[split_idx:]
@@ -382,7 +375,7 @@ def get_combined_signal(ticker: str, period: str = "2y"):
                 model.train_model(X_train, y_train, X_val, y_val, epochs=20, batch_size=32)
                 model.save_model(model_name)
 
-            latest_data = model_data[-60:].reshape(1, 60, -1)
+            latest_data = preprocessor.get_latest_sequence(60)
             ml_prediction = float(model.predict(latest_data)[0][0])
             model_metrics = model.evaluate(X_val, y_val)
 
@@ -487,12 +480,8 @@ def train_model(ticker: str, request: TrainRequest):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        # Подготовка на последователности
-        scaled_data = preprocessor.scaled_data
-        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
-        model_data = scaled_data[feature_cols].values
-
-        X, y = preprocessor.create_sequences(model_data, seq_length=60)
+        # Подготовка на последователности (target = посока 0/1)
+        X, y, prices = preprocessor.prepare_model_data(seq_length=60)
 
         # Разделяне
         split_idx = int(len(X) * 0.9)
@@ -539,12 +528,8 @@ def run_backtest(ticker: str, period: str = "2y", initial_capital: float = 10000
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        # Подготовка
-        scaled_data = preprocessor.scaled_data
-        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
-        model_data = scaled_data[feature_cols].values
-
-        X, y = preprocessor.create_sequences(model_data, seq_length=60)
+        # Подготовка (target = посока 0/1)
+        X, y, prices = preprocessor.prepare_model_data(seq_length=60)
         train_size = 0.8
         split_idx = int(len(X) * train_size)
         X_train, X_test = X[:split_idx], X[split_idx:]
@@ -564,12 +549,11 @@ def run_backtest(ticker: str, period: str = "2y", initial_capital: float = 10000
                             epochs=50, batch_size=32)
             model.save_model(model_name)
 
-        # Предсказания
+        # Предсказания (вероятности за покачване)
         predictions = model.predict(X_test)
 
-        # Реални цени
-        all_prices = preprocessor.data['Close'].values[60:]
-        test_prices = all_prices[split_idx:]
+        # Реални цени — подравнени от prepare_model_data
+        test_prices = prices[split_idx:]
 
         # Backtest
         backtester = StockBacktester(
@@ -747,11 +731,7 @@ def export_report(ticker: str, format: str = "json"):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        scaled_data = preprocessor.scaled_data
-        feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
-        model_data = scaled_data[feature_cols].values
-
-        X, y = preprocessor.create_sequences(model_data, seq_length=60)
+        X, y, prices = preprocessor.prepare_model_data(seq_length=60)
         split_idx = int(len(X) * 0.8)
         X_train, X_test = X[:split_idx], X[split_idx:]
         y_train, y_test = y[:split_idx], y[split_idx:]
@@ -770,8 +750,7 @@ def export_report(ticker: str, format: str = "json"):
             model.save_model(model_name)
 
         predictions = model.predict(X_test)
-        all_prices = preprocessor.data['Close'].values[60:]
-        test_prices = all_prices[split_idx:]
+        test_prices = prices[split_idx:]
 
         backtester = StockBacktester(
             predictions=predictions,

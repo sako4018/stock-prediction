@@ -103,25 +103,22 @@ class StockPredictionPipeline:
         if self.preprocessor is None:
             raise ValueError("[ERROR] Първо обработи данни с preprocess_data()")
 
-        # Взимане на нормализираните данни
-        data = self.preprocessor.scaled_data
-
-        # Премахване на не-числови колони
-        feature_cols = [col for col in data.columns if col not in ['Date']]
-        model_data = data[feature_cols].values
-
-        # Създаване на последователности
-        X, y = self.preprocessor.create_sequences(model_data, seq_length=seq_length)
+        # Features, target (посока 0/1) и подравнени реални цени
+        X, y, prices = self.preprocessor.prepare_model_data(seq_length=seq_length)
 
         # Разделяне на train/test
         X_train, X_test, y_train, y_test = self.preprocessor.split_data(
             X, y, train_size=train_size
         )
 
+        # Цените за test периода — подравнени със същия split
+        split_index = int(len(X) * train_size)
+
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
+        self.prices_test = prices[split_index:]
 
         return X_train, X_test, y_train, y_test
 
@@ -201,25 +198,14 @@ class StockPredictionPipeline:
         if self.model is None:
             raise ValueError("[ERROR] Първо тренирай модела с train_model()")
 
-        # Предсказания върху test данните
+        # Вероятности за покачване върху test данните
         predictions = self.model.predict(self.X_test)
 
-        # Взимане на реалните цени за test периода
-        # Изчисляваме от колко ред започват test данните
-        seq_length = self.X_train.shape[1]
-        train_size = 0.8
-        total_sequences = len(self.X_train) + len(self.X_test)
-        train_sequences = len(self.X_train)
-
-        # Реалните цени започват от seq_length
-        all_prices = self.preprocessor.data['Close'].values[seq_length:]
-        test_prices = all_prices[train_sequences:]
-
-        # Backtesting
+        # Backtesting — цените вече са подравнени в prepare_sequences()
         backtester = StockBacktester(
             predictions=predictions,
             actual_values=self.y_test,
-            prices=test_prices,
+            prices=self.prices_test,
             initial_capital=10000
         )
 
@@ -259,42 +245,33 @@ class StockPredictionPipeline:
             self.collect_data()
             self.preprocess_data()
 
-        # Взимане на последните 60 дни
-        data = self.preprocessor.scaled_data
-        feature_cols = [col for col in data.columns if col not in ['Date']]
-        latest_data = data[feature_cols].values[-60:]
+        # Последният прозорец, завършващ с днешния ден
+        seq_length = self.model.sequence_length
+        latest_data = self.preprocessor.get_latest_sequence(seq_length)
 
-        # Reshape за модела
-        latest_data = latest_data.reshape(1, 60, -1)
-
-        # Предсказание
-        prediction = self.model.predict(latest_data)
-
-        # Денормализиране на предсказанието
-        # (за простота показваме нормализираната стойност и посоката)
-        predicted_value = prediction[0][0]
+        # Вероятност, че утре затваря по-високо
+        probability = float(self.model.predict(latest_data)[0][0])
 
         current_price = self.data['Close'].values[-1]
 
+        # Колко далеч сме от неутралното 0.5, в проценти
+        confidence = abs(probability - 0.5) * 200
+
         print(f"\n[INFO] Предсказание за {self.ticker}:")
         print(f"   Текуща цена: ${current_price:.2f}")
-        print(f"   Предсказана стойност (нормализирана): {predicted_value:.4f}")
+        print(f"   Вероятност за покачване: {probability*100:.1f}%")
 
-        if predicted_value > 0.5:
-            signal = "BUY - Очаква се покачване"
-            confidence = (predicted_value - 0.5) * 200  # Конвертиране в %
+        if probability > 0.5:
+            print(f"   Сигнал: BUY - Очаква се покачване")
         else:
-            signal = "SELL - Очаква се спад"
-            confidence = (0.5 - predicted_value) * 200
-
-        print(f"   Сигнал: {signal}")
+            print(f"   Сигнал: SELL - Очаква се спад")
         print(f"   Увереност: {confidence:.1f}%")
 
         return {
             'ticker': self.ticker,
             'current_price': current_price,
-            'prediction': predicted_value,
-            'signal': 'BUY' if predicted_value > 0.5 else 'SELL',
+            'prediction': probability,
+            'signal': 'BUY' if probability > 0.5 else 'SELL',
             'confidence': confidence
         }
 

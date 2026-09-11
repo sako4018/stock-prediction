@@ -18,10 +18,18 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.metrics import mean_squared_error, mean_absolute_error, accuracy_score
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, log_loss
+)
 import joblib
 import os
 import json
+
+# Версия на архитектурата. Стари модели (v2) бяха регресия върху нормализирана
+# цена и връщат съвсем различни числа при същата форма на тегла — затова
+# load_model отказва да ги зареди вместо да ги подаде мълчаливо като вероятности.
+ARCHITECTURE_VERSION = 'lstm_attention_v3_clf'
 
 # Проверка дали има GPU
 print("[CHECK] Проверка на GPU...")
@@ -181,8 +189,10 @@ class StockPredictionModel:
         ).to(self.device)
 
         # Optimizer и loss function
+        # BCEWithLogits, защото задачата е класификация: утре нагоре или надолу.
+        # Моделът връща logit; sigmoid-ът се прилага в loss-а и в predict().
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.BCEWithLogitsLoss()
 
         print("[OK] Модел създаден успешно!")
         print("\n[INFO] Архитектура на модела:")
@@ -305,7 +315,7 @@ class StockPredictionModel:
 
         return self.history
 
-    def predict(self, X):
+    def predict(self, X, return_logits=False):
         """
         Прави предсказания с тренирания модел.
 
@@ -313,11 +323,14 @@ class StockPredictionModel:
         ----------
         X : numpy.array
             Входни данни за предсказание
+        return_logits : bool
+            Ако е True, връща суровите logit-и вместо вероятности
 
         Връща:
         -------
         numpy.array
-            Предсказани стойности
+            Вероятност (0..1), че утре цената затваря по-високо.
+            0.5 е неутрално — над него е bullish, под него bearish.
         """
         if self.model is None:
             raise ValueError("[FAIL] Моделът не е създаден или зареден!")
@@ -325,57 +338,85 @@ class StockPredictionModel:
         self.model.eval()
         with torch.no_grad():
             X_tensor = torch.FloatTensor(X).to(self.device)
-            predictions = self.model(X_tensor)
-            return predictions.cpu().numpy()
+            logits = self.model(X_tensor)
+            if return_logits:
+                return logits.cpu().numpy()
+            return torch.sigmoid(logits).cpu().numpy()
 
-    def evaluate(self, X_test, y_test):
+    def evaluate(self, X_test, y_test, threshold=0.5):
         """
         Оценява модела на тестови данни.
+
+        Задачата е класификация, затова метриките са класификационни.
+        Винаги се показва и baseline ("винаги предсказвай мнозинството") —
+        без него accuracy от 55% изглежда добре, а може да е по-зле от нищо.
 
         Параметри:
         ----------
         X_test : numpy.array
             Тестови входни данни
         y_test : numpy.array
-            Истински target стойности
+            Истински посоки (0/1)
+        threshold : float
+            Праг върху вероятността за клас 1
 
         Връща:
         -------
         dict
-            Метрики за точност (MSE, MAE, RMSE, MAPE)
+            Accuracy, Precision, Recall, F1, ROC-AUC, LogLoss, Baseline, Edge
         """
         print("\n[INFO] Оценка на модела...")
 
-        # Предсказване
-        y_pred = self.predict(X_test)
+        probs = self.predict(X_test).flatten()
+        y_true = np.asarray(y_test).ravel().astype(int)
+        y_pred = (probs > threshold).astype(int)
 
-        # Изчисляване на метрики
-        mse = mean_squared_error(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
-        rmse = np.sqrt(mse)
+        accuracy = accuracy_score(y_true, y_pred) * 100
+        precision = precision_score(y_true, y_pred, zero_division=0) * 100
+        recall = recall_score(y_true, y_pred, zero_division=0) * 100
+        f1 = f1_score(y_true, y_pred, zero_division=0) * 100
 
-        # MAPE (Mean Absolute Percentage Error)
-        mape = np.mean(np.abs((y_test - y_pred.flatten()) / y_test)) * 100
+        # ROC-AUC иска и двата класа да присъстват в y_true
+        if len(np.unique(y_true)) < 2:
+            roc_auc = float('nan')
+        else:
+            roc_auc = roc_auc_score(y_true, probs)
 
-        # Точност на посоката (нагоре/надолу)
-        direction_pred = (y_pred.flatten() > 0.5).astype(int)
-        direction_true = (y_test > 0.5).astype(int)
-        direction_accuracy = accuracy_score(direction_true, direction_pred) * 100
+        logloss = log_loss(y_true, np.clip(probs, 1e-7, 1 - 1e-7), labels=[0, 1])
+
+        # Честен baseline: винаги предсказвай по-честия клас
+        majority_class = 1 if y_true.mean() >= 0.5 else 0
+        baseline_accuracy = (y_true == majority_class).mean() * 100
+        edge = accuracy - baseline_accuracy
 
         metrics = {
-            'MSE': mse,
-            'MAE': mae,
-            'RMSE': rmse,
-            'MAPE': mape,
-            'Direction_Accuracy': direction_accuracy
+            'Accuracy': accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1': f1,
+            'ROC_AUC': roc_auc,
+            'LogLoss': logloss,
+            'Baseline_Accuracy': baseline_accuracy,
+            'Edge': edge,
+            # Запазено име за обратна съвместимост с batch_train / backend
+            'Direction_Accuracy': accuracy,
         }
 
-        print("\n[UP] Резултати:")
-        print(f"   MSE (Mean Squared Error): {mse:.6f}")
-        print(f"   MAE (Mean Absolute Error): {mae:.6f}")
-        print(f"   RMSE (Root Mean Squared Error): {rmse:.6f}")
-        print(f"   MAPE (Mean Absolute % Error): {mape:.2f}%")
-        print(f"   Точност на посоката: {direction_accuracy:.2f}%")
+        print("\n[UP] Резултати (класификация на посоката):")
+        print(f"   Accuracy:   {accuracy:.2f}%")
+        print(f"   Precision:  {precision:.2f}%")
+        print(f"   Recall:     {recall:.2f}%")
+        print(f"   F1-Score:   {f1:.2f}%")
+        print(f"   ROC-AUC:    {roc_auc:.4f}  (0.5 = случайно)")
+        print(f"   LogLoss:    {logloss:.4f}")
+        print(f"\n   Baseline (винаги '{majority_class}'): {baseline_accuracy:.2f}%")
+        print(f"   Edge над baseline: {edge:+.2f}%", end=' ')
+        if edge > 2:
+            print("[OK]")
+        elif edge > 0:
+            print("[WARN] слаб")
+        else:
+            print("[FAIL] моделът не бие baseline")
 
         return metrics
 
@@ -404,7 +445,9 @@ class StockPredictionModel:
             'sequence_length': self.sequence_length,
             'n_features': self.n_features,
             'model_name': model_name,
-            'architecture': 'lstm_attention_v2'  # Версия на архитектурата
+            'architecture': ARCHITECTURE_VERSION,
+            'task': 'classification',
+            'target': 'Price_Direction',
         }
 
         config_path = os.path.join(models_dir, f'{model_name}_config.json')
@@ -438,6 +481,15 @@ class StockPredictionModel:
         with open(config_path, 'r') as f:
             config = json.load(f)
 
+        saved_arch = config.get('architecture')
+        if saved_arch != ARCHITECTURE_VERSION:
+            raise ValueError(
+                f"[FAIL] Несъвместим модел '{model_name}': записан е като "
+                f"'{saved_arch}', а текущата архитектура е "
+                f"'{ARCHITECTURE_VERSION}'. Старите модели предсказваха "
+                f"нормализирана цена, не посока — трябва да се претренират."
+            )
+
         self.sequence_length = config['sequence_length']
         self.n_features = config['n_features']
 
@@ -448,19 +500,9 @@ class StockPredictionModel:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"[FAIL] Моделът не е намерен: {model_path}")
 
-        # Зареждане с backward compatibility
         saved_state = torch.load(model_path, map_location=self.device)
-
-        try:
-            # Опит за директно зареждане (съвместима архитектура)
-            self.model.load_state_dict(saved_state)
-            print(f"[OK] Модел зареден: {model_path}")
-        except RuntimeError:
-            # Ако има mismatch, зареждаме с partial weights
-            print(f"[WARN] Архитектурата е променена. Зареждане с partial weights...")
-            missing, unexpected = self.model.load_state_dict(saved_state, strict=False)
-            print(f"   Липсващи ключове: {len(missing)} (нови слоеве)")
-            print(f"   [TIP] Препоръка: Претренирай модела за по-добри резултати")
+        self.model.load_state_dict(saved_state)
+        print(f"[OK] Модел зареден: {model_path}")
 
         self.model.eval()
 
@@ -478,11 +520,11 @@ if __name__ == "__main__":
 
     # Генериране на random данни
     X_train = np.random.rand(n_samples, sequence_length, n_features).astype(np.float32)
-    y_train = np.random.rand(n_samples).astype(np.float32)
+    y_train = np.random.randint(0, 2, n_samples).astype(np.float32)
     X_val = np.random.rand(200, sequence_length, n_features).astype(np.float32)
-    y_val = np.random.rand(200).astype(np.float32)
+    y_val = np.random.randint(0, 2, 200).astype(np.float32)
     X_test = np.random.rand(100, sequence_length, n_features).astype(np.float32)
-    y_test = np.random.rand(100).astype(np.float32)
+    y_test = np.random.randint(0, 2, 100).astype(np.float32)
 
     # Създаване и обучение на модел
     model = StockPredictionModel(sequence_length=sequence_length, n_features=n_features)

@@ -1,6 +1,8 @@
 {
     "sequence_length": 60,
-    "n_features": 42,
+    "n_features": 40,
     "model_name": "AAPL_stock_model",
-    "architecture": "lstm_attention_v2"
+    "architecture": "lstm_attention_v3_clf",
+    "task": "classification",
+    "target": "Price_Direction"
 }

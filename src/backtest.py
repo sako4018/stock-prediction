@@ -50,10 +50,10 @@ class StockBacktester:
         """
         print("\n[INFO] Изчисляване на метрики за точност...\n")
 
-        # Конвертиране на regression predictions в classification (нагоре/надолу)
-        # Ако предсказаната цена е > 0.5 (нормализирано) => нагоре (1), иначе надолу (0)
+        # predictions са вероятности за покачване (0..1), actual_values са
+        # реалните посоки (0/1). 0.5 е истинският неутрален праг.
         pred_direction = (self.predictions > 0.5).astype(int)
-        actual_direction = (self.actual_values > 0.5).astype(int)
+        actual_direction = np.asarray(self.actual_values).ravel().astype(int)
 
         # Accuracy: Общ процент правилни предсказания
         accuracy = accuracy_score(actual_direction, pred_direction)
@@ -67,13 +67,21 @@ class StockBacktester:
         # F1-score: Баланс между precision и recall
         f1 = f1_score(actual_direction, pred_direction, zero_division=0)
 
+        # Честен baseline: винаги предсказвай по-честата посока
+        majority_class = 1 if actual_direction.mean() >= 0.5 else 0
+        baseline = (actual_direction == majority_class).mean()
+
         self.results['accuracy'] = accuracy * 100
         self.results['precision'] = precision * 100
         self.results['recall'] = recall * 100
         self.results['f1_score'] = f1 * 100
+        self.results['baseline_accuracy'] = baseline * 100
+        self.results['edge'] = (accuracy - baseline) * 100
 
         print(f"[OK] Accuracy (Точност): {accuracy*100:.2f}%")
         print(f"   → Колко често предсказваме правилно посоката")
+        print(f"   → Baseline (винаги '{majority_class}'): {baseline*100:.2f}%"
+              f" | Edge: {(accuracy-baseline)*100:+.2f}%")
         print(f"\n[OK] Precision (Прецизност): {precision*100:.2f}%")
         print(f"   → От всички BUY сигнали, колко реално са се качили")
         print(f"\n[OK] Recall (Чувствителност): {recall*100:.2f}%")
@@ -512,7 +520,7 @@ class WalkForwardValidator:
 
             # Оценка на fold-а
             direction_pred = (predictions > 0.5).astype(int)
-            direction_true = (y_test > 0.5).astype(int)
+            direction_true = np.asarray(y_test).ravel().astype(int)
             accuracy = accuracy_score(direction_true, direction_pred) * 100
 
             # Trading simulation за този fold
@@ -599,9 +607,9 @@ if __name__ == "__main__":
     np.random.seed(42)
     prices = 100 + np.cumsum(np.random.randn(n_samples) * 2)
 
-    # Симулиране на predictions и actual values
-    actual_values = np.random.rand(n_samples)
-    predictions = actual_values + np.random.randn(n_samples) * 0.1  # Малък шум
+    # Симулиране на posoки (0/1) и вероятности от модел с лек сигнал
+    actual_values = np.random.randint(0, 2, n_samples)
+    predictions = np.clip(actual_values * 0.3 + 0.35 + np.random.randn(n_samples) * 0.15, 0, 1)
 
     # Създаване на backtester
     backtester = StockBacktester(

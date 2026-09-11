@@ -66,15 +66,13 @@ class BatchTrainer:
             preprocessor.create_target_variable(days_ahead=1)
             preprocessor.normalize_data()
 
-            scaled_data = preprocessor.scaled_data
-            feature_cols = [col for col in scaled_data.columns if col not in ['Date']]
-            model_data = scaled_data[feature_cols].values
+            feature_cols = preprocessor.get_feature_columns()
 
-            if len(model_data) < 80:
+            if len(preprocessor.scaled_data) < 80:
                 return {'ticker': ticker, 'status': 'error', 'message': 'Not enough data after preprocessing'}
 
-            # Подготовка на последователности
-            X, y = preprocessor.create_sequences(model_data, seq_length=60)
+            # Подготовка на последователности (target = посока 0/1)
+            X, y, prices = preprocessor.prepare_model_data(seq_length=60)
 
             if len(X) < 20:
                 return {'ticker': ticker, 'status': 'error', 'message': 'Not enough sequences'}
