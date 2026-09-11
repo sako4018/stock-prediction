@@ -572,7 +572,7 @@ class WalkForwardValidator:
                 **model_kwargs
             )
             model.build_lstm_model(
-                lstm_units=lstm_units or [128, 64, 32],
+                lstm_units=lstm_units or [32, 16, 8],
                 dropout_rate=dropout_rate,
             )
 

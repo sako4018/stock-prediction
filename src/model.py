@@ -71,7 +71,7 @@ class LSTMModel(nn.Module):
     PyTorch LSTM с Attention Mechanism за stock prediction.
     """
 
-    def __init__(self, n_features, sequence_length, lstm_units=[128, 64, 32], dropout_rate=0.2):
+    def __init__(self, n_features, sequence_length, lstm_units=[32, 16, 8], dropout_rate=0.2):
         super(LSTMModel, self).__init__()
 
         self.n_features = n_features
@@ -159,10 +159,10 @@ class StockPredictionModel:
         self.device = device
         self.scaler = None
         self.scaler_columns = None
-        self.lstm_units = [128, 64, 32]
+        self.lstm_units = [32, 16, 8]
         self.dropout_rate = 0.2
 
-    def build_lstm_model(self, lstm_units=[128, 64, 32], dropout_rate=0.2):
+    def build_lstm_model(self, lstm_units=[32, 16, 8], dropout_rate=0.2):
         """
         Създава LSTM neural network архитектурата.
 
@@ -174,7 +174,7 @@ class StockPredictionModel:
         Параметри:
         ----------
         lstm_units : list
-            Брой неврони в всеки LSTM слой [128, 64, 32]
+            Брой неврони в всеки LSTM слой [32, 16, 8]
         dropout_rate : float
             Процент dropout за регуларизация (0.2 = 20%)
 
@@ -200,7 +200,12 @@ class StockPredictionModel:
         # Optimizer и loss function
         # BCEWithLogits, защото задачата е класификация: утре нагоре или надолу.
         # Моделът връща logit; sigmoid-ът се прилага в loss-а и в predict().
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+        # weight_decay (L2): с няколкостотин тренировъчни последователности
+        # дори намален модел лесно запаметява шум; малка L2 санкция върху
+        # теглата е евтина добавка към dropout+early stopping.
+        self.optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=0.001, weight_decay=1e-4
+        )
         self.criterion = nn.BCEWithLogitsLoss()
 
         print("[OK] Модел създаден успешно!")
@@ -524,7 +529,7 @@ class StockPredictionModel:
 
         # Създаване със същите размери, с които е бил трениран
         self.build_lstm_model(
-            lstm_units=config.get('lstm_units', [128, 64, 32]),
+            lstm_units=config.get('lstm_units', [32, 16, 8]),
             dropout_rate=config.get('dropout_rate', 0.2),
         )
 

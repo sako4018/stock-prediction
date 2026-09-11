@@ -86,7 +86,7 @@ class BatchTrainer:
                 sequence_length=X.shape[1],
                 n_features=X.shape[2]
             )
-            model.build_lstm_model(lstm_units=[128, 64, 32], dropout_rate=0.2)
+            model.build_lstm_model(lstm_units=[32, 16, 8], dropout_rate=0.2)
 
             history = model.train_model(
                 X_train, y_train, X_val, y_val,

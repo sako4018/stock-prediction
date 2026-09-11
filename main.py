@@ -147,7 +147,7 @@ class StockPredictionPipeline:
 
         # Build архитектурата
         self.model.build_lstm_model(
-            lstm_units=[128, 64, 32],
+            lstm_units=[32, 16, 8],
             dropout_rate=0.2
         )
 
