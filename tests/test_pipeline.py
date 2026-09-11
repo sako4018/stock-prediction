@@ -127,6 +127,45 @@ def test_no_infinities_in_features():
     return "няма inf/NaN"
 
 
+def test_indicators_do_not_depend_on_how_much_data_was_loaded():
+    """
+    Прозорците бяха адаптивни: min(20, max(5, n//3)). При 1 година данни
+    "SMA_20" значеше друго от "SMA_20" при 2 години, а моделът получаваше
+    колона със същото име и различен смисъл. Сега стойностите за един и
+    същи ден трябва да съвпадат независимо колко история е свалена.
+    """
+    df = make_random_walk(n=400, seed=41)
+    short = df.iloc[:250].copy()
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        full_out = StockDataPreprocessor(df).calculate_technical_indicators()
+        short_out = StockDataPreprocessor(short).calculate_technical_indicators()
+
+    merged = short_out.merge(full_out, on='Date', suffixes=('_s', '_f'))
+    assert len(merged) > 100, f"само {len(merged)} общи дни за сравнение"
+
+    checked = ['SMA_20', 'SMA_50', 'RSI', 'MACD', 'ATR', 'Stoch_K',
+               'MFI', 'CCI', 'ADX', 'ROC_20', 'BB_Position', 'Close_vs_SMA50']
+    for col in checked:
+        a = merged[f'{col}_s'].values
+        b = merged[f'{col}_f'].values
+        assert np.allclose(a, b, rtol=1e-9, atol=1e-9), \
+            f"{col} се променя според дължината на данните"
+
+    return f"{len(checked)} индикатора съвпадат на {len(merged)} общи дни"
+
+
+def test_too_short_series_fails_loudly():
+    """По-добре ясна грешка, отколкото индикатори от 5 дни, кръстени RSI_14."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        try:
+            StockDataPreprocessor(make_random_walk(n=40)).calculate_technical_indicators()
+        except ValueError as e:
+            assert 'реда данни' in str(e), f"неясно съобщение: {e}"
+            return "къси серии се отхвърлят с обяснение"
+    raise AssertionError("40 реда минаха, а не трябваше")
+
+
 def test_no_backfill_at_series_start():
     """
     Началните редове нямат история за дългите прозорци. Преди се запълваха
@@ -376,6 +415,8 @@ TESTS = [
     test_price_levels_are_not_features,
     test_features_are_stationary,
     test_no_infinities_in_features,
+    test_indicators_do_not_depend_on_how_much_data_was_loaded,
+    test_too_short_series_fails_loudly,
     test_no_backfill_at_series_start,
     test_scaler_sees_only_training_rows,
     test_standard_scaler_keeps_signal_wide,

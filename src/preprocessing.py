@@ -22,6 +22,23 @@ TARGET_COLUMNS = ['Future_Price', 'Price_Direction']
 # Колоната, която моделът предсказва: 1 = утре нагоре, 0 = утре надолу.
 TARGET_COLUMN = 'Price_Direction'
 
+# Стандартните периоди на индикаторите. Фиксирани са нарочно: ако размерът
+# зависи от това колко данни са свалени, "RSI" при 1 година значи друго от
+# "RSI" при 2 години. Модел, трениран на едното, получава на входа си колона
+# със същото име, но различен смисъл.
+W_SMA_SHORT, W_SMA_LONG = 20, 50
+W_EMA_SHORT, W_EMA_LONG, W_MACD_SIGNAL = 12, 26, 9
+W_RSI, W_BB, W_ATR = 14, 20, 14
+W_STOCH, W_STOCH_D = 14, 3
+W_MFI, W_CCI, W_ADX = 14, 20, 14
+W_VWAP, W_EWMA_VOL, W_VOLUME = 20, 20, 20
+ROC_PERIODS = [5, 10, 20]
+
+# Най-дългият прозорец определя колко реда в началото нямат пълна история.
+# ADX смила два пъти по W_ADX, затова му трябват 2*W_ADX-1 реда.
+WARMUP_ROWS = max(W_SMA_LONG, W_EMA_LONG, W_BB, W_CCI,
+                  2 * W_ADX - 1, max(ROC_PERIODS)) + 1
+
 # Колони в абсолютни нива (долари, брой акции). Растат с годините, затова
 # стойностите от теста са извън диапазона, който моделът е виждал в
 # тренировката — и той няма как да ги разпознае. Остават в self.data за
@@ -73,22 +90,30 @@ class StockDataPreprocessor:
         df = self.data.copy()
         n = len(df)
 
-        # Adaptive windows based on available data
-        sma20_w = min(20, max(5, n // 3))
-        sma50_w = min(50, max(10, n // 2))
+        if n <= WARMUP_ROWS:
+            raise ValueError(
+                f"[FAIL] Само {n} реда данни. Индикаторите имат фиксирани "
+                f"периоди (най-дългият е {W_SMA_LONG} дни), затова първите "
+                f"{WARMUP_ROWS} реда отпадат и не остава нищо. Свали по-дълъг "
+                f"период."
+            )
+
+        # Фиксирани периоди — виж коментара при константите
+        sma20_w = W_SMA_SHORT
+        sma50_w = W_SMA_LONG
 
         # 1. Simple Moving Averages (SMA)
         df['SMA_20'] = df['Close'].rolling(window=sma20_w).mean()
         df['SMA_50'] = df['Close'].rolling(window=sma50_w).mean()
 
         # 2. Exponential Moving Averages (EMA)
-        ema12_w = min(12, max(3, n // 4))
-        ema26_w = min(26, max(5, n // 2))
+        ema12_w = W_EMA_SHORT
+        ema26_w = W_EMA_LONG
         df['EMA_12'] = df['Close'].ewm(span=ema12_w, adjust=False).mean()
         df['EMA_26'] = df['Close'].ewm(span=ema26_w, adjust=False).mean()
 
         # 3. RSI
-        rsi_w = min(14, max(3, n // 4))
+        rsi_w = W_RSI
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=rsi_w).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_w).mean()
@@ -97,11 +122,11 @@ class StockDataPreprocessor:
 
         # 4. MACD
         df['MACD'] = df['EMA_12'] - df['EMA_26']
-        df['MACD_Signal'] = df['MACD'].ewm(span=min(9, max(2, n // 5)), adjust=False).mean()
+        df['MACD_Signal'] = df['MACD'].ewm(span=W_MACD_SIGNAL, adjust=False).mean()
         df['MACD_Histogram'] = df['MACD'] - df['MACD_Signal']
 
         # 5. Bollinger Bands
-        bb_w = min(20, max(5, n // 3))
+        bb_w = W_BB
         df['BB_Middle'] = df['Close'].rolling(window=bb_w).mean()
         bb_std = df['Close'].rolling(window=bb_w).std()
         df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
@@ -124,7 +149,7 @@ class StockDataPreprocessor:
         df['OC_Range'] = df['Close'] - df['Open']
 
         # 10. ATR
-        atr_w = min(14, max(3, n // 4))
+        atr_w = W_ATR
         high_low = df['High'] - df['Low']
         high_close = (df['High'] - df['Close'].shift()).abs()
         low_close = (df['Low'] - df['Close'].shift()).abs()
@@ -132,11 +157,11 @@ class StockDataPreprocessor:
         df['ATR'] = true_range.rolling(window=atr_w).mean()
 
         # 11. Stochastic Oscillator
-        stoch_w = min(14, max(3, n // 4))
+        stoch_w = W_STOCH
         low_14 = df['Low'].rolling(window=stoch_w).min()
         high_14 = df['High'].rolling(window=stoch_w).max()
         df['Stoch_K'] = ((df['Close'] - low_14) / (high_14 - low_14)) * 100
-        df['Stoch_D'] = df['Stoch_K'].rolling(window=min(3, max(1, n // 8))).mean()
+        df['Stoch_D'] = df['Stoch_K'].rolling(window=W_STOCH_D).mean()
 
         # 12. Williams %R
         df['Williams_R'] = ((high_14 - df['Close']) / (high_14 - low_14)) * -100
@@ -148,13 +173,13 @@ class StockDataPreprocessor:
         # 14. VWAP (Volume Weighted Average Price) — пълзящ прозорец.
         # Кумулативен VWAP от началото на серията зависи от това откога сме
         # свалили данните, което го прави безсмислен като сигнал.
-        vwap_w = min(20, max(5, n // 3))
+        vwap_w = W_VWAP
         typical = (df['High'] + df['Low'] + df['Close']) / 3
         df['VWAP'] = ((typical * df['Volume']).rolling(vwap_w).sum()
                       / df['Volume'].rolling(vwap_w).sum())
 
         # 15. MFI (Money Flow Index) - RSI с обем
-        mfi_w = min(14, max(5, n // 3))
+        mfi_w = W_MFI
         typical_price = (df['High'] + df['Low'] + df['Close']) / 3
         money_flow = typical_price * df['Volume']
         positive_flow = money_flow.where(typical_price > typical_price.shift(), 0).rolling(mfi_w).sum()
@@ -163,13 +188,13 @@ class StockDataPreprocessor:
         df['MFI'] = 100 - (100 / (1 + mfi_ratio))
 
         # 16. CCI
-        cci_w = min(20, max(5, n // 3))
+        cci_w = W_CCI
         tp_sma = typical_price.rolling(cci_w).mean()
         tp_mad = typical_price.rolling(cci_w).apply(lambda x: np.abs(x - x.mean()).mean())
         df['CCI'] = (typical_price - tp_sma) / (0.015 * tp_mad)
 
         # 17. ADX
-        adx_w = min(14, max(3, n // 4))
+        adx_w = W_ADX
         plus_dm = df['High'].diff()
         minus_dm = -df['Low'].diff()
         plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0)
@@ -196,13 +221,12 @@ class StockDataPreprocessor:
         df['RSI_Divergence'] = df['Close'].pct_change(5) - df['RSI'].pct_change(5)
 
         # 21. Rate of Change (ROC) — адаптивни периоди за кратък data frame
-        roc_periods = [min(5, max(2, n // 5)), min(10, max(3, n // 3)), min(20, max(5, n // 2))]
-        roc_periods = sorted(set(p for p in roc_periods if p >= 2))
+        roc_periods = ROC_PERIODS
         for period in roc_periods:
             df[f'ROC_{period}'] = df['Close'].pct_change(period) * 100
 
         # 22. Exponential weighted moving stats
-        ewma_span = min(20, max(5, n // 3))
+        ewma_span = W_EWMA_VOL
         df['EWMA_Volatility'] = df['Price_Change'].ewm(span=ewma_span).std() * np.sqrt(252)
 
         # === 23. СТАЦИОНАРНИ ЗАМЕСТИТЕЛИ НА НИВАТА ===
@@ -227,7 +251,7 @@ class StockDataPreprocessor:
         df['OC_Range_Pct'] = (close - df['Open']) / close * 100
         df['Gap_Pct'] = (df['Open'] / close.shift(1) - 1) * 100
 
-        vol_avg = df['Volume'].rolling(window=min(20, max(5, n // 3))).mean()
+        vol_avg = df['Volume'].rolling(window=W_VOLUME).mean()
         df['Volume_Ratio'] = df['Volume'] / vol_avg
         df['OBV_Norm'] = df['OBV'].diff() / vol_avg
         df['Close_vs_VWAP'] = close / df['VWAP'] - 1
