@@ -7,9 +7,9 @@ export default function NewsPanel({ ticker }: { ticker: string }) {
 
   useEffect(() => {
     setLoading(true)
-    cachedFetch(`/api/stocks/${ticker}/combined`, 120000)
+    cachedFetch(`/api/news/${ticker}`, 120000)
       .then(json => {
-        setArticles(json?.combined?.breakdown?.sentiment?.articles || [])
+        setArticles(json?.articles || [])
       })
       .catch(() => {})
       .finally(() => setLoading(false))

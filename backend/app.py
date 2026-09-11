@@ -52,6 +52,9 @@ from batch_train import BatchTrainer
 from performance import PerformanceTracker
 from fundamentals import get_fundamentals, get_valuation_comparison
 from portfolio_optimization import optimize_portfolio, optimize_min_volatility, calculate_efficient_frontier, get_diversification_metrics
+import market_data
+import news_data
+import json as _json
 
 app = FastAPI(
     title="Stock Prediction API",
@@ -1004,6 +1007,146 @@ def compare_valuation(tickers: list):
     """Сравнение на valuation между компании."""
     try:
         return get_valuation_comparison(tickers)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== MARKET ====================
+
+@app.get("/api/market/overview")
+def get_market_overview():
+    """
+    Текущо ниво + дневна промяна на основните пазарни индекси
+    (S&P 500, NASDAQ, VIX, Dow, 10Y treasury yield). Живо изтегляне
+    при всяка заявка (кратък период) — същия модел като get_stock_info().
+    """
+    try:
+        collector = market_data.MarketIndexCollector(period='5d')
+        idx_data = collector.fetch_all(save_to_csv=False)
+        if not idx_data:
+            raise HTTPException(status_code=503, detail="Пазарните индекси не са достъпни в момента")
+
+        out = {}
+        for symbol, df in idx_data.items():
+            name = market_data.MARKET_INDICES.get(symbol, symbol)
+            if len(df) < 1:
+                continue
+            last = float(df['Close'].iloc[-1])
+            prev = float(df['Close'].iloc[-2]) if len(df) > 1 else last
+            change = last - prev
+            change_pct = (change / prev * 100) if prev else 0
+            out[name] = {
+                'symbol': symbol, 'value': round(last, 2),
+                'change': round(change, 2), 'change_percent': round(change_pct, 2),
+            }
+        return {'indices': out, 'timestamp': datetime.now().isoformat()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== NEWS ====================
+
+@app.get("/api/news/{ticker}")
+def get_news(ticker: str, company_name: str = ''):
+    """
+    Дедупликирани живи новини за тикера, с sentiment за всяка. За разлика
+    от /api/stocks/{ticker}/combined (чийто breakdown.sentiment.articles
+    поле вече не съществува в текущия combine_signals() формат), този
+    endpoint е предназначен точно за NewsPanel-а.
+    """
+    try:
+        articles = news_data.fetch_live_news(ticker, company_name, max_results=20)
+        articles = news_data.enrich_with_sentiment(articles)
+        articles = news_data.deduplicate_articles(articles)
+        articles.sort(key=lambda a: a['available_at'] or datetime.min, reverse=True)
+
+        out = [{
+            'title': a['title'], 'source': a['source'], 'url': a['url'],
+            'published_at': a['available_at'].isoformat() if a['available_at'] else None,
+            'sentiment': a['sentiment_label'], 'sentiment_score': a['sentiment_score'],
+        } for a in articles]
+
+        return {'ticker': ticker.upper(), 'articles': out, 'count': len(out)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== FEATURE IMPORTANCE / ABLATION COMPARISON ====================
+# Скъпи изчисления (изискват тренировка) — резултатът се кешира в data/
+# и се преизчислява само при ?recompute=true, вместо на всяка заявка.
+
+_CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+
+
+def _cache_path(name: str, ticker: str) -> str:
+    return os.path.join(_CACHE_DIR, f'{name}_{ticker.upper()}.json')
+
+
+@app.get("/api/stocks/{ticker}/feature-importance")
+def get_feature_importance(ticker: str, period: str = "2y", recompute: bool = False,
+                           epochs: int = 25):
+    """Permutation feature importance — кешира се, скъпо за смятане на всяка заявка."""
+    path = _cache_path('feature_importance', ticker)
+    if not recompute and os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return _json.load(f)
+
+    try:
+        from feature_pipeline import build_dataset
+        from feature_importance import permutation_importance
+
+        result = build_dataset(ticker, period=period,
+                              feature_groups=('price', 'technical', 'market', 'news', 'fundamental'))
+        X, y, feature_names = result['X'], result['y'], result['feature_names']
+
+        split = int(len(X) * 0.8)
+        val = max(1, int(split * 0.9))
+        model = StockPredictionModel(sequence_length=X.shape[1], n_features=X.shape[2])
+        model.build_lstm_model()
+        model.train_model(X[:val], y[:val], X[val:split], y[val:split],
+                          epochs=epochs, batch_size=32)
+
+        imp_df = permutation_importance(model, X[split:], y[split:], feature_names)
+        payload = {
+            'ticker': ticker.upper(),
+            'computed_at': datetime.now().isoformat(),
+            'features': imp_df.to_dict(orient='records'),
+        }
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            _json.dump(payload, f, indent=2)
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/stocks/{ticker}/comparison")
+def get_ablation_comparison(ticker: str, period: str = "2y", recompute: bool = False,
+                            epochs: int = 25):
+    """
+    Buy&Hold / ML / ML+Market / ML+News / ML+Fundamentals / ML+All —
+    реален backtest на всеки вариант. Кешира се — 5 тренировки на заявка
+    би било прекалено бавно за живо UI извикване.
+    """
+    path = _cache_path('comparison', ticker)
+    if not recompute and os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return _json.load(f)
+
+    try:
+        from ablation import run_comparison
+        df, _ = run_comparison(ticker, period=period, epochs=epochs)
+        payload = {
+            'ticker': ticker.upper(),
+            'computed_at': datetime.now().isoformat(),
+            'results': df.where(pd.notna(df), None).to_dict(orient='records'),
+        }
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            _json.dump(payload, f, indent=2)
+        return payload
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -4,6 +4,7 @@ import StockChart from './StockChart'
 import FundamentalsPanel from './FundamentalsPanel'
 import KeyStats from './KeyStats'
 import NewsPanel from './NewsPanel'
+import MarketPanel from './MarketPanel'
 
 export default function Dashboard({ ticker }: { ticker: string }) {
   return (
@@ -20,7 +21,10 @@ export default function Dashboard({ ticker }: { ticker: string }) {
           <PredictionPanel ticker={ticker} />
           <NewsPanel ticker={ticker} />
         </div>
-        <div className="xl:col-span-2"><FundamentalsPanel ticker={ticker} /></div>
+        <div className="xl:col-span-2 space-y-4">
+          <FundamentalsPanel ticker={ticker} />
+          <MarketPanel />
+        </div>
       </div>
     </div>
   )
