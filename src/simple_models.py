@@ -174,6 +174,7 @@ if __name__ == "__main__":
     import argparse
 
     p = argparse.ArgumentParser(description='Прости модели върху pooled данните')
+    p.add_argument('--tickers', default=None, help='списък, разделен със запетая')
     p.add_argument('--period', default='5y')
     p.add_argument('--days-ahead', type=int, default=None)
     p.add_argument('--seq-length', type=int, default=None)
@@ -185,7 +186,8 @@ if __name__ == "__main__":
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
-    run(period=args.period, days_ahead=args.days_ahead, seq_length=args.seq_length,
+    run(tickers=args.tickers.split(',') if args.tickers else None,
+        period=args.period, days_ahead=args.days_ahead, seq_length=args.seq_length,
         feature_groups=args.groups.split(',') if args.groups else None,
         use_lags=args.lags, label_prefix=args.label_prefix,
         min_move=args.min_move, verbose=args.verbose)
