@@ -391,6 +391,68 @@ def test_build_dataset_rejects_unknown_feature_group():
         return "непозната feature група се отхвърля преди мрежова заявка"
 
 
+# ---------------------------------------------------------------- feature_importance.py
+
+def test_permutation_importance_finds_the_real_signal():
+    """
+    Синтетичен сценарий с ИЗВЕСТНА важна feature (само f2, последният ден
+    от прозореца, определя label-а) — permutation importance трябва да я
+    нареди сред най-важните, а известно ирелевантна feature да остане
+    близо до нула.
+    """
+    from model import StockPredictionModel
+    from feature_importance import permutation_importance
+
+    rng = np.random.default_rng(1)
+    n, seq, feats = 300, 30, 6
+    X = rng.normal(0, 1, (n, seq, feats)).astype(np.float32)
+    y = (X[:, -1, 2] > 0).astype(np.float32)
+
+    m = StockPredictionModel(sequence_length=seq, n_features=feats)
+    with contextlib.redirect_stdout(io.StringIO()):
+        m.build_lstm_model(lstm_units=[16, 8, 8])
+        m.train_model(X[:250], y[:250], X[250:270], y[250:270], epochs=60, batch_size=32)
+
+    names = [f'f{i}' for i in range(feats)]
+    imp = permutation_importance(m, X[270:], y[270:], names, n_repeats=8, seed=1)
+
+    top2 = set(imp.head(2)['feature'])
+    assert 'f2' in top2, f"известно важната f2 не е в топ-2: {imp.to_string()}"
+    f2_row = imp[imp['feature'] == 'f2'].iloc[0]
+    assert f2_row['importance'] > 0, "известно важната feature показа нулева/отрицателна важност"
+    return f"f2 (известно важна) е в топ-2 с importance={f2_row['importance']:.4f}"
+
+
+def test_permutation_importance_shape_mismatch_raises():
+    from model import StockPredictionModel
+    from feature_importance import permutation_importance
+    m = StockPredictionModel(sequence_length=10, n_features=3)
+    with contextlib.redirect_stdout(io.StringIO()):
+        m.build_lstm_model(lstm_units=[8, 4, 4])
+    X = np.random.randn(5, 10, 3).astype(np.float32)
+    y = np.random.randint(0, 2, 5).astype(np.float32)
+    try:
+        permutation_importance(m, X, y, feature_names=['a', 'b'])  # 2 имена за 3 features
+        raise AssertionError("трябваше да гръмне при несъвпадащ брой имена")
+    except ValueError:
+        return "несъвпадащ брой feature имена се хваща рано, не гърми по-надолу"
+
+
+# ---------------------------------------------------------------- ablation.py (структура, без мрежа)
+
+def test_ablation_variants_cover_every_group_at_least_once():
+    from ablation import ABLATION_VARIANTS
+    from feature_pipeline import ALL_FEATURE_GROUPS
+    covered = set()
+    for _, groups in ABLATION_VARIANTS:
+        covered.update(groups)
+    missing = set(ALL_FEATURE_GROUPS) - covered
+    assert not missing, f"feature групи без нито един ablation вариант: {missing}"
+    names = [n for n, _ in ABLATION_VARIANTS]
+    assert 'ML+All' in names, "липсва 'ML+All' вариант в сравнението"
+    return f"{len(ABLATION_VARIANTS)} варианта покриват всички {len(ALL_FEATURE_GROUPS)} групи"
+
+
 TESTS = [
     test_market_features_no_duplicate_dates,
     test_market_features_have_expected_columns,
@@ -409,6 +471,9 @@ TESTS = [
     test_no_news_gives_neutral_defaults_not_nan,
     test_split_price_technical_keywords,
     test_build_dataset_rejects_unknown_feature_group,
+    test_permutation_importance_finds_the_real_signal,
+    test_permutation_importance_shape_mismatch_raises,
+    test_ablation_variants_cover_every_group_at_least_once,
 ]
 
 
