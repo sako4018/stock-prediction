@@ -248,14 +248,29 @@ class StockDataPreprocessor:
         # Ако inf стигне до скалера, цялата колона става безполезна.
         df = df.replace([np.inf, -np.inf], np.nan)
 
-        # Запълване на NaN стойности — запазваме всички дати
-        # Оригиналните цени (Open/High/Low/Close/Volume) никога нямат NaN
-        # Само индикаторите имат NaN в началото заради rolling windows
-        df = df.ffill().bfill()
+        # ffill запълва редки дупки ВЪТРЕ в серията (например липсващ обем
+        # за един ден) — това ползва само минали стойности и е позволено.
+        df = df.ffill()
+
+        # Началните редове нямат достатъчно история за дългите прозорци.
+        # Тук преди стоеше bfill(), който ги запълваше с БЪДЕЩИ стойности:
+        # SMA_50 на ден 0 получаваше средната от дни 0..49, тоест моделът
+        # виждаше напред. Такива редове се изхвърлят, а не се измислят.
+        rows_before = len(df)
+        df = df.dropna().reset_index(drop=True)
+        dropped = rows_before - len(df)
+
+        if len(df) < 2:
+            raise ValueError(
+                f"[FAIL] След изхвърляне на warmup-а не остана нищо "
+                f"({rows_before} реда вход). Трябват поне ~{rows_before} + 60 "
+                f"дни данни за тези индикатори."
+            )
 
         self.data = df
 
         print(f"[OK] Създадени {len(df.columns)} колони с индикатори")
+        print(f"[INFO] Изхвърлени {dropped} реда warmup (без пълна история)")
         print(f"[INFO] Налични данни: {len(df)} реда")
 
         return df

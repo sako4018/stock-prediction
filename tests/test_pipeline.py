@@ -127,6 +127,34 @@ def test_no_infinities_in_features():
     return "няма inf/NaN"
 
 
+def test_no_backfill_at_series_start():
+    """
+    Началните редове нямат история за дългите прозорци. Преди се запълваха
+    с bfill, тоест със стойности от бъдещето. Сега трябва да са изхвърлени,
+    а първият оцелял ред да носи истински изчислен индикатор.
+    """
+    df = make_random_walk(n=300, seed=31)
+    p = StockDataPreprocessor(df)
+    with contextlib.redirect_stdout(io.StringIO()):
+        out = p.calculate_technical_indicators()
+
+    assert len(out) < len(df), "нищо не е отрязано — warmup-ът още се запълва"
+    assert not out.isna().any().any(), "остават NaN след обработката"
+
+    # Първият оцелял ред, намерен обратно в оригиналните данни
+    first_date = out['Date'].iloc[0]
+    pos = int(np.flatnonzero(df['Date'].values == first_date)[0])
+
+    # SMA_50 там трябва да е истинската средна на последните 50 дни,
+    # а не първата налична стойност, дръпната назад
+    expected = df['Close'].iloc[pos - 49:pos + 1].mean()
+    actual = out['SMA_50'].iloc[0]
+    assert abs(actual - expected) < 1e-6, \
+        f"SMA_50 на първия ред е {actual:.4f}, а истинската е {expected:.4f}"
+
+    return f"изхвърлени {len(df)-len(out)} реда warmup, индикаторите са истински"
+
+
 def test_scaler_sees_only_training_rows():
     """Скалерът не бива да е видял нито един ред от тестовите прозорци."""
     p = build(make_random_walk(n=600, seed=13))
@@ -253,7 +281,10 @@ def test_latest_sequence_ends_with_today():
 
     feats = p.scaled_data[p.get_feature_columns()].values
 
-    assert len(feats) == len(df), "редовете не бива да се режат"
+    # Warmup-ът отпред се маха, но последният ден трябва да оцелее —
+    # той е входът за предсказанието.
+    assert p.data['Date'].iloc[-1] == df['Date'].iloc[-1], \
+        "последният ден е отрязан — няма от какво да предсказваме"
     assert prices[-1] == df['Close'].values[-2], \
         "тренировката включва ден без етикет"
     assert np.allclose(latest[0, -1], feats[-1]), \
@@ -262,7 +293,8 @@ def test_latest_sequence_ends_with_today():
         "предсказваме същия прозорец, на който тренирахме"
     assert not np.isnan(latest).any(), "NaN в прозореца за предсказване"
     assert not np.isnan(X).any(), "NaN в тренировъчните данни"
-    return f"тренировка до ден {len(X)+SEQ-2}, предсказване от ден {len(df)-1}"
+    return (f"{len(X)} тренировъчни прозореца, предсказването ползва "
+            f"последния ден от данните")
 
 
 def test_predict_returns_probabilities():
@@ -344,6 +376,7 @@ TESTS = [
     test_price_levels_are_not_features,
     test_features_are_stationary,
     test_no_infinities_in_features,
+    test_no_backfill_at_series_start,
     test_scaler_sees_only_training_rows,
     test_standard_scaler_keeps_signal_wide,
     test_scaler_travels_with_model,
