@@ -26,7 +26,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from pooled_dataset import pool_frames, split_train_val
+from pooled_dataset import pool_frames, split_train_val, apply_min_move
 
 SEQ = 10
 DAYS_AHEAD = 1
@@ -255,6 +255,51 @@ def test_ticker_with_broken_data_is_skipped_not_fatal():
     return f"запазени {ds['tickers']}, пропуснати BROKEN и TOO_SHORT"
 
 
+def test_min_move_drops_flat_days_from_the_middle():
+    """
+    Дните с дребно движение отпадат като примери, но остават в историята.
+
+    Важното е второто: ако редът се изтриеше от таблицата, прозорците на
+    следващите дни щяха да прескочат ден и да съдържат вход, който в
+    реалността не съществува.
+    """
+    frames = {}
+    for i in range(3):
+        df = make_frame(i, n=200, seed=i)
+        frames[f'T{i}'] = apply_min_move(df, min_move=0.01)
+
+    rows_before = len(make_frame(0, n=200, seed=0))
+    assert len(frames['T0']) == rows_before, "min_move е изтрил редове вместо етикети"
+
+    labelled = frames['T0']['Price_Direction'].notna().sum()
+    assert labelled < rows_before, "min_move не махна нито един етикет"
+
+    ds = pool_frames(frames, seq_length=SEQ, days_ahead=DAYS_AHEAD)
+    y_all = np.concatenate([ds['y_train'], ds['y_test']])
+    assert not np.isnan(y_all).any(), (
+        f"{int(np.isnan(y_all).sum())} примера влязоха в модела без етикет"
+    )
+    assert set(np.unique(y_all)) <= {0.0, 1.0}, "етикетите не са само 0/1"
+    return (f"{rows_before} реда запазени, етикети {labelled}, "
+            f"примери в модела {len(y_all)}, нула NaN")
+
+
+def test_min_move_makes_the_moves_bigger_not_the_rows_fewer():
+    """Останалите примери наистина са дните с по-голямо движение."""
+    df = make_frame(0, n=400, seed=7)
+    filtered = apply_min_move(df, min_move=0.015)
+
+    ret = (df['Future_Price'] / df['Close'] - 1.0).abs()
+    kept = filtered['Price_Direction'].notna() & df['Future_Price'].notna()
+    dropped = filtered['Price_Direction'].isna() & df['Future_Price'].notna()
+
+    assert kept.sum() > 0 and dropped.sum() > 0, "филтърът не раздели данните"
+    assert ret[kept].min() >= 0.015 - 1e-12, "останал е ден под прага"
+    assert ret[dropped].max() < 0.015, "изхвърлен е ден над прага"
+    return (f"запазени {int(kept.sum())} дни (мин. движение "
+            f"{ret[kept].min()*100:.2f}%), изхвърлени {int(dropped.sum())}")
+
+
 def test_pooling_actually_multiplies_the_examples():
     """
     Смисълът на цялото упражнение: повече примери.
@@ -282,6 +327,8 @@ TESTS = [
     test_meta_rows_line_up_with_x_rows,
     test_validation_split_is_chronological,
     test_ticker_with_broken_data_is_skipped_not_fatal,
+    test_min_move_drops_flat_days_from_the_middle,
+    test_min_move_makes_the_moves_bigger_not_the_rows_fewer,
     test_pooling_actually_multiplies_the_examples,
 ]
 

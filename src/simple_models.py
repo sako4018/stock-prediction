@@ -70,7 +70,7 @@ def build_models(seed=42):
 
 def run(tickers=None, period='5y', feature_groups=None, seq_length=None,
         days_ahead=None, train_size=0.8, use_lags=False, seed=42,
-        label_prefix='', verbose=False):
+        label_prefix='', min_move=None, verbose=False):
     """
     Строи pooled dataset-а веднъж и пуска всички прости модели върху него.
 
@@ -80,7 +80,7 @@ def run(tickers=None, period='5y', feature_groups=None, seq_length=None,
     ds = pooled_dataset.build_pooled_dataset(
         tickers=tickers, period=period, feature_groups=feature_groups,
         seq_length=seq_length, days_ahead=days_ahead, train_size=train_size,
-        verbose=verbose,
+        min_move=min_move, verbose=verbose,
     )
 
     shape_fn = lagged_features if use_lags else last_day_features
@@ -112,6 +112,7 @@ def run(tickers=None, period='5y', feature_groups=None, seq_length=None,
             'n_features': X_train.shape[1],
             'seq_length': ds['seq_length'],
             'days_ahead': ds['days_ahead'],
+            'min_move': min_move,
             'n_train': int(len(X_train)),
             'n_val': 0,
             'n_purged': ds['n_purged'],
@@ -177,6 +178,8 @@ if __name__ == "__main__":
     p.add_argument('--days-ahead', type=int, default=None)
     p.add_argument('--seq-length', type=int, default=None)
     p.add_argument('--groups', default=None)
+    p.add_argument('--min-move', type=float, default=None,
+                   help='предсказвай само дните с движение поне толкова (0.01 = 1%%)')
     p.add_argument('--lags', action='store_true', help='добави и по-ранни дни от прозореца')
     p.add_argument('--label-prefix', default='')
     p.add_argument('--verbose', action='store_true')
@@ -184,4 +187,5 @@ if __name__ == "__main__":
 
     run(period=args.period, days_ahead=args.days_ahead, seq_length=args.seq_length,
         feature_groups=args.groups.split(',') if args.groups else None,
-        use_lags=args.lags, label_prefix=args.label_prefix, verbose=args.verbose)
+        use_lags=args.lags, label_prefix=args.label_prefix,
+        min_move=args.min_move, verbose=args.verbose)

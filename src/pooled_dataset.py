@@ -236,9 +236,13 @@ def pool_frames(frames, seq_length=60, days_ahead=1, train_size=0.8,
         label_dates = d['label_dates'][ends]
         y = d['target'][ends]
 
-        is_train = label_dates <= split_np
-        is_test = end_dates > split_np
-        purged += int((~is_train & ~is_test).sum())
+        # Примери без етикет отпадат. Това не са само последните дни: при
+        # включен min_move дните с твърде малко движение нарочно остават
+        # без етикет и трябва да изпаднат от средата на редицата.
+        has_label = ~np.isnan(y)
+        is_train = (label_dates <= split_np) & has_label
+        is_test = (end_dates > split_np) & has_label
+        purged += int((has_label & ~is_train & ~is_test).sum())
 
         for mask, Xs, ys, metas, split_name in (
             (is_train, Xtr, ytr, meta_tr, 'train'),
@@ -299,15 +303,39 @@ def pool_frames(frames, seq_length=60, days_ahead=1, train_size=0.8,
     }
 
 
+def apply_min_move(df, min_move):
+    """
+    Маха етикета на дните, в които цената почти не е мръднала.
+
+    Смисълът: при движение от 0.1% посоката е почти монета — дали затваря
+    с +0.05% или -0.05% зависи от последната сделка. Такива дни носят
+    предимно шум и тренират модела да гадае. Ако се предсказват само
+    дните с истинско движение, задачата е по-лесна И по-полезна: точно
+    тогава посоката има значение.
+
+    Дните остават в таблицата (историята им трябва за прозорците на
+    следващите дни) — махат се само от етикетираните примери.
+    """
+    ret = df['Future_Price'] / df['Close'] - 1.0
+    small = ret.abs() < min_move
+    df = df.copy()
+    df.loc[small.fillna(False), TARGET_COLUMN] = np.nan
+    return df
+
+
 def build_pooled_dataset(tickers=None, period='5y', feature_groups=None,
                          seq_length=None, days_ahead=None, train_size=0.8,
-                         split_date=None, verbose=False):
+                         split_date=None, min_move=None, verbose=False):
     """
     Сваля данните за всички тикери, построява суровите таблици и ги слепва.
 
     Тикер, който гръмне (няма данни, твърде къса история, мрежова грешка),
     се пропуска с предупреждение — един проблемен символ не бива да убива
     целия експеримент.
+
+    min_move : float, optional
+        Предсказвай само дните, в които цената се мести с поне толкова
+        (0.01 = 1%). Виж apply_min_move().
     """
     tickers = tuple(tickers or DEFAULT_TICKERS)
     seq_length = seq_length or cfg.SEQUENCE_LENGTH
@@ -335,8 +363,11 @@ def build_pooled_dataset(tickers=None, period='5y', feature_groups=None,
                     ticker, period=period, feature_groups=feature_groups,
                     days_ahead=days_ahead, price_data=price,
                 )
-            frames[ticker] = preprocessor.data
-            print(f"[POOL] [{i}/{len(tickers)}] {ticker}: {len(preprocessor.data)} реда")
+            frame = preprocessor.data
+            if min_move:
+                frame = apply_min_move(frame, min_move)
+            frames[ticker] = frame
+            print(f"[POOL] [{i}/{len(tickers)}] {ticker}: {len(frame)} реда")
         except Exception as e:
             failed.append((ticker, str(e)[:80]))
             print(f"[POOL][WARN] [{i}/{len(tickers)}] {ticker} пропуснат: {e}")
@@ -352,6 +383,7 @@ def build_pooled_dataset(tickers=None, period='5y', feature_groups=None,
     result['failed'] = failed
     result['period'] = period
     result['feature_groups'] = feature_groups
+    result['min_move'] = min_move
     return result
 
 

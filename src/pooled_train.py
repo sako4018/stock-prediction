@@ -105,6 +105,7 @@ def log_experiment(result, label):
         'feature_groups': result['feature_groups'],
         'seq_length': result['seq_length'],
         'days_ahead': result['days_ahead'],
+        'min_move': result.get('min_move'),
         'n_train': result['n_train'],
         'n_test': ev['n_test'],
         'test_from': result['test_from'],
@@ -143,12 +144,13 @@ def print_experiments():
     print("\n" + "=" * 96)
     print("ДНЕВНИК НА ЕКСПЕРИМЕНТИТЕ (реални числа, не оценки)")
     print("=" * 96)
-    print(f"{'вариант':<26} {'модел':<10} {'период':<7} {'цел':>4} "
+    print(f"{'вариант':<26} {'модел':<10} {'период':<7} {'цел':>4} {'мин.ход':>8} "
           f"{'train':>7} {'test':>6} {'точност':>8} {'база':>7} {'EDGE':>8}")
     print("-" * 96)
     for r in sorted(rows, key=lambda x: x['edge'], reverse=True):
+        mm = f"{r['min_move']*100:.1f}%" if r.get('min_move') else '-'
         print(f"{r['label'][:25]:<26} {r.get('model','lstm')[:9]:<10} "
-              f"{r['period']:<7} {r['days_ahead']:>3}д "
+              f"{r['period']:<7} {r['days_ahead']:>3}д {mm:>8} "
               f"{r['n_train']:>7} {r['n_test']:>6} "
               f"{r['accuracy']*100:>7.2f}% {r['base_rate']*100:>6.2f}% "
               f"{r['edge']*100:>+7.2f}")
@@ -205,7 +207,7 @@ def print_report(result):
 def train_pooled(tickers=None, period='5y', feature_groups=None, seq_length=None,
                  days_ahead=None, epochs=40, batch_size=128, train_size=0.8,
                  lstm_units=(32, 16, 8), dropout_rate=0.2, seed=42,
-                 save_as='pooled_model', label=None, verbose=False):
+                 save_as='pooled_model', label=None, min_move=None, verbose=False):
     """
     Пълният цикъл: данни -> тренировка -> честна оценка -> запис.
 
@@ -218,7 +220,7 @@ def train_pooled(tickers=None, period='5y', feature_groups=None, seq_length=None
     ds = pooled_dataset.build_pooled_dataset(
         tickers=tickers, period=period, feature_groups=feature_groups,
         seq_length=seq_length, days_ahead=days_ahead, train_size=train_size,
-        verbose=verbose,
+        min_move=min_move, verbose=verbose,
     )
 
     X_tr, y_tr, X_val, y_val = pooled_dataset.split_train_val(ds)
@@ -245,6 +247,7 @@ def train_pooled(tickers=None, period='5y', feature_groups=None, seq_length=None
         'n_features': len(ds['feature_names']),
         'seq_length': ds['seq_length'],
         'days_ahead': ds['days_ahead'],
+        'min_move': min_move,
         'n_train': int(len(X_tr)),
         'n_val': int(len(X_val)),
         'n_purged': ds['n_purged'],
@@ -276,6 +279,8 @@ if __name__ == "__main__":
     p.add_argument('--batch-size', type=int, default=128)
     p.add_argument('--seq-length', type=int, default=None)
     p.add_argument('--days-ahead', type=int, default=None)
+    p.add_argument('--min-move', type=float, default=None,
+                   help='предсказвай само дните с движение поне толкова (0.01 = 1%%)')
     p.add_argument('--groups', default=None, help='напр. price,technical,market')
     p.add_argument('--name', default='pooled_model')
     p.add_argument('--label', default=None, help='име на реда в дневника на експериментите')
@@ -297,5 +302,6 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         save_as=args.name,
         label=args.label,
+        min_move=args.min_move,
         verbose=args.verbose,
     )
