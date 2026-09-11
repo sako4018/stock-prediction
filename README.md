@@ -164,6 +164,59 @@ print(r['X'].shape, r['feature_groups'])
 python src/ablation.py
 ```
 
+### Pooled training (one model across many tickers)
+
+A single-ticker model has only a few hundred training examples, which is far
+too few to tell signal from noise. Pooling 25 tickers gives ~23k examples and,
+more importantly, a test set large enough that the noise margin drops from
+±6.5 to ±1.3 percentage points.
+
+This is only valid because the features are stationary ratios and differences
+(`Close_vs_SMA20`, `Price_Change`, RSI), not raw prices — a 2% move means the
+same thing for AAPL and for KO.
+
+```bash
+# Train one LSTM across the 25 default tickers
+python src/pooled_train.py --period 5y --epochs 40
+
+# Alternative targets: longer horizon, or ignore days that barely moved
+python src/pooled_train.py --period 5y --days-ahead 5 --min-move 0.02
+
+# Are simple models any better? (logistic regression, gradient boosting,
+# and a majority-class dummy, on the exact same data and split)
+python src/simple_models.py --period 5y
+
+# Every run appends one row to data/experiments.jsonl — show the table
+python src/pooled_train.py --show-log
+```
+
+### Live prediction log (the honest test)
+
+Backtests can be fooled by subtle leakage; live predictions cannot, because
+the future has not happened yet. Run `--daily` once per trading day after the
+close and the scoreboard accumulates on its own.
+
+```bash
+# Record today's predictions, resolve any that have come due, show the score
+python src/prediction_log.py --daily
+
+# Or the three steps separately
+python src/prediction_log.py --record
+python src/prediction_log.py --resolve
+python src/prediction_log.py --scoreboard
+```
+
+With 25 tickers this records ~25 predictions per day, so a month gives ~500
+real checks — enough to distinguish 50% from 55%. The scoreboard always shows
+edge over the base rate, never bare accuracy, and refuses to draw a conclusion
+below ~100 resolved predictions.
+
+On Windows, to run it automatically every weekday evening:
+
+```powershell
+schtasks /create /tn "StockPredictionLog" /tr "python `"$PWD\src\prediction_log.py`" --daily" /sc weekly /d MON,TUE,WED,THU,FRI /st 23:00
+```
+
 ## Project Structure
 
 ```
@@ -209,6 +262,11 @@ stock-prediction/
 │   │                              #   earnings timeline (training)
 │   ├── feature_pipeline.py       # Orchestrator — combines price/technical/
 │   │                              #   market/news/fundamental into one dataset
+│   ├── pooled_dataset.py         # One dataset across many tickers — global
+│   │                             #   date split, per-ticker sequences, purge
+│   ├── pooled_train.py           # Trains the pooled model + experiment log
+│   ├── simple_models.py          # Logistic/gradient boosting/dummy baselines
+│   ├── prediction_log.py         # Live daily predictions, resolved after the fact
 │   ├── feature_importance.py     # Permutation feature importance
 │   ├── ablation.py               # Buy&Hold vs ML vs ML+X comparison
 │   ├── config.py                 # Central settings, .env-overridable
@@ -227,6 +285,8 @@ stock-prediction/
 ├── tests/
 │   ├── test_pipeline.py          # ML pipeline: leakage, alignment, walk-forward
 │   ├── test_combined_signal.py   # 5-voter signal logic
+│   ├── test_pooled.py            # Cross-ticker split, purge zone, alignment
+│   ├── test_prediction_log.py    # Live prediction resolution and scoring
 │   └── test_data_sources.py      # Market/news/fundamentals: as-of joins,
 │                                  #   dedup, embargo, the future-news leakage test
 ├── main.py                       # CLI entry point
@@ -338,10 +398,40 @@ forward in time with a purge gap; nothing is ever shuffled).
 python tests/test_pipeline.py        # ML pipeline: leakage, alignment, walk-forward (19 tests)
 python tests/test_combined_signal.py # 5-voter signal logic (15 tests)
 python tests/test_data_sources.py    # market/news/fundamentals as-of joins, dedup, embargo (20 tests)
+python tests/test_pooled.py          # cross-ticker split, purge zone, X/meta alignment (12 tests)
+python tests/test_prediction_log.py  # live prediction resolution and scoring (6 tests)
 ```
 
 No pytest dependency — each file is a standalone runner, exits non-zero
-on failure.
+on failure. 72 tests total.
+
+## Measured results
+
+Every number below comes from `data/experiments.jsonl`, written by the runs
+themselves. **Edge** is accuracy minus the base rate (always predicting the
+majority class); it is the only number that means anything here.
+
+| Setup | Test size | Accuracy | Base rate | Edge | Noise margin |
+|---|---|---|---|---|---|
+| Gradient boosting, AAPL only | 229 | 59.39% | 53.71% | **+5.68** | ±6.48 |
+| LSTM, 25 tickers, 5y | 5725 | 51.35% | 51.35% | +0.00 | ±1.30 |
+| LSTM, 25 tickers, 10y | 12000 | 51.88% | 51.88% | −0.00 | ±0.89 |
+| Logistic regression, 25 tickers | 5725 | 51.04% | 51.35% | −0.31 | ±1.30 |
+| Gradient boosting, 25 tickers | 5725 | 50.78% | 51.35% | −0.58 | ±1.30 |
+| LSTM, 5-day horizon + 2% filter | 3239 | 54.92% | 54.58% | +0.34 | ±1.72 |
+
+The first row is the trap this project was built to avoid. On one ticker the
+model appears to find a large edge, but with only 229 test days anything under
+±6.5 points is noise, and every re-run produces a different two-digit number.
+Widening the test set to 5725 days shrinks the margin to ±1.3 and the apparent
+edge disappears.
+
+**Honest conclusion: no configuration beats the base rate outside the noise
+margin.** Not the LSTM, not logistic regression, not gradient boosting; not at
+5 or 10 years; not on any of four target definitions. Next-day direction does
+not appear to be readable from price and technical indicators alone. The live
+prediction log is there to keep testing that claim against real days rather
+than settling it with a backtest.
 
 ## Warning
 
