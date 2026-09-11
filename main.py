@@ -22,7 +22,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 from data_collection import StockDataCollector
 from preprocessing import StockDataPreprocessor
 from model import StockPredictionModel
-from backtest import StockBacktester
+from backtest import StockBacktester, WalkForwardValidator
 
 class StockPredictionPipeline:
     """
@@ -231,6 +231,35 @@ class StockPredictionPipeline:
 
         return results
 
+    def run_walkforward(self, seq_length=60, train_window=252, test_window=63,
+                        step_size=21, epochs=30, batch_size=32,
+                        initial_capital=10000):
+        """
+        По-реалистична проверка от единичен train/test split: тренира и
+        тества многократно върху плъзгащи се прозорци във времето, вместо
+        да разчита на едно число от един период. Виж WalkForwardValidator
+        за защо скалерът се учи наново във всеки fold и защо има празнина
+        между train и test.
+        """
+        print("\n" + "="*60)
+        print("[WALK-FORWARD] ВАЛИДАЦИЯ С ПЛЪЗГАЩИ СЕ ПРОЗОРЦИ")
+        print("="*60 + "\n")
+
+        if self.preprocessor is None:
+            raise ValueError("[ERROR] Първо обработи данни с preprocess_data()")
+
+        validator = WalkForwardValidator(
+            train_window=train_window, test_window=test_window,
+            step_size=step_size
+        )
+        results = validator.run(
+            self.preprocessor, StockPredictionModel,
+            seq_length=seq_length, epochs=epochs, batch_size=batch_size,
+            initial_capital=initial_capital
+        )
+
+        return results
+
     def predict_future(self, model_name=None):
         """
         Прави предсказание за следващия период
@@ -301,7 +330,8 @@ def main():
 Примери:
   python main.py --ticker AAPL --train              # Тренира модел за Apple
   python main.py --ticker TSLA --predict            # Прави предсказание за Tesla
-  python main.py --ticker GOOGL --backtest          # Backtest за Google
+  python main.py --ticker GOOGL --backtest          # Backtest за Google (единичен split)
+  python main.py --ticker GOOGL --walkforward       # Walk-forward (много fold-ове, по-честно)
   python main.py --ticker MSFT --full               # Пълен pipeline (train + backtest)
   python main.py --web                              # Стартира web dashboard
         """
@@ -317,6 +347,8 @@ def main():
                        help='Make predictions')
     parser.add_argument('--backtest', action='store_true',
                        help='Run backtesting')
+    parser.add_argument('--walkforward', action='store_true',
+                       help='Run walk-forward validation (multiple folds, more reliable than --backtest)')
     parser.add_argument('--full', action='store_true',
                        help='Run full pipeline (train + backtest)')
     parser.add_argument('--web', action='store_true',
@@ -390,8 +422,14 @@ def main():
 
             pipeline.run_backtest()
 
+        # Walk-Forward Validation
+        elif args.walkforward:
+            pipeline.collect_data()
+            pipeline.preprocess_data(days_ahead=1)
+            pipeline.run_walkforward(epochs=args.epochs, batch_size=args.batch_size)
+
         else:
-            print("[ERROR] Моля посочи --train, --predict, --backtest, --full или --web")
+            print("[ERROR] Моля посочи --train, --predict, --backtest, --walkforward, --full или --web")
             parser.print_help()
             return
 

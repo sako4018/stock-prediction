@@ -19,8 +19,9 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from preprocessing import StockDataPreprocessor, TARGET_COLUMNS
+from preprocessing import StockDataPreprocessor, TARGET_COLUMNS, TARGET_COLUMN
 from model import StockPredictionModel
+from backtest import WalkForwardValidator
 
 SEQ = 30
 
@@ -192,6 +193,75 @@ def test_no_backfill_at_series_start():
         f"SMA_50 на първия ред е {actual:.4f}, а истинската е {expected:.4f}"
 
     return f"изхвърлени {len(df)-len(out)} реда warmup, индикаторите са истински"
+
+
+def test_walkforward_folds_purge_train_test_overlap():
+    """
+    Всяка последователност носи seq_length дни история, затова съседни
+    train/test прозорци без празнина биха споделяли seq_length-1 сурови
+    реда. WalkForwardValidator трябва да вкарва gap >= seq_length, за да
+    не се случва това — проверяваме го тук за всеки fold, независимо от
+    вътрешния assert в run().
+    """
+    df = make_random_walk(n=260, seed=51)
+    p = StockDataPreprocessor(df)
+    with contextlib.redirect_stdout(io.StringIO()):
+        p.calculate_technical_indicators()
+        p.create_target_variable(days_ahead=1)
+
+    validator = WalkForwardValidator(train_window=80, test_window=30, step_size=25)
+    with contextlib.redirect_stdout(io.StringIO()):
+        results = validator.run(
+            p, StockPredictionModel, seq_length=SEQ,
+            epochs=3, batch_size=32, lstm_units=[16, 8, 8],
+        )
+
+    assert results['total_folds'] >= 2, \
+        f"само {results['total_folds']} fold-а — тестовите данни/прозорци не бяха достатъчни"
+
+    for f in results['fold_results']:
+        gap_used = f['test_start'] - f['train_end']
+        assert gap_used >= SEQ, (
+            f"fold {f['fold']}: gap={gap_used} < seq_length={SEQ}, "
+            f"train и test последователности се препокриват в сурови дни"
+        )
+        last_train_raw_day = f['train_end'] - 1
+        first_test_raw_day = f['test_start'] - SEQ + 1
+        assert first_test_raw_day > last_train_raw_day, (
+            f"fold {f['fold']}: тестова последователност посяга "
+            f"на суров ден {first_test_raw_day}, който е <= последния "
+            f"тренировъчен ден {last_train_raw_day}"
+        )
+
+    return f"{results['total_folds']} fold-а, навсякъде gap >= {SEQ} дни"
+
+
+def test_walkforward_capital_compounds_across_folds():
+    """final_capital трябва да е резултат от сложна лихва между fold-овете,
+    не последният fold, тестван изолирано с нулиран капитал."""
+    df = make_random_walk(n=260, seed=53)
+    p = StockDataPreprocessor(df)
+    with contextlib.redirect_stdout(io.StringIO()):
+        p.calculate_technical_indicators()
+        p.create_target_variable(days_ahead=1)
+
+    validator = WalkForwardValidator(train_window=80, test_window=30, step_size=25)
+    with contextlib.redirect_stdout(io.StringIO()):
+        results = validator.run(
+            p, StockPredictionModel, seq_length=SEQ,
+            epochs=3, batch_size=32, lstm_units=[16, 8, 8],
+            initial_capital=10000,
+        )
+
+    assert results['total_folds'] >= 2
+    expected_final = results['fold_results'][-1]['capital_after']
+    assert abs(results['final_capital'] - expected_final) < 1e-6, \
+        "final_capital не съвпада с капитала след последния fold"
+
+    implied_return = (results['final_capital'] - 10000) / 10000 * 100
+    assert abs(implied_return - results['total_return']) < 1e-6, \
+        "total_return не отговаря на сложната лихва от капитала"
+    return f"капитал ${10000:,.0f} -> ${results['final_capital']:,.0f} през {results['total_folds']} fold-а"
 
 
 def test_scaler_sees_only_training_rows():
@@ -418,6 +488,8 @@ TESTS = [
     test_indicators_do_not_depend_on_how_much_data_was_loaded,
     test_too_short_series_fails_loudly,
     test_no_backfill_at_series_start,
+    test_walkforward_folds_purge_train_test_overlap,
+    test_walkforward_capital_compounds_across_folds,
     test_scaler_sees_only_training_rows,
     test_standard_scaler_keeps_signal_wide,
     test_scaler_travels_with_model,

@@ -13,6 +13,7 @@ Backtesting Module
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import os
 
@@ -425,8 +426,27 @@ class StockBacktester:
 
 class WalkForwardValidator:
     """
-    Walk-Forward Validation - по-реалистичен backtest.
-    Вместо да разделим данните веднъж, тренираме на滾ing window.
+    Walk-Forward Validation с purging — по-реалистичен backtest от единичен split.
+
+    Единичен train/test split дава едно число, което зависи от това кой
+    точно период е паднал в теста. Тук моделът се тренира и тества
+    многократно върху последователни прозорци, плъзгащи се напред във
+    времето, и резултатът е разпределение от fold-ове, не едно число.
+
+    Два капана, които правят "walk-forward" безсмислен, ако не се внимава:
+
+    1. Скалерът трябва да се учи наново във всеки fold, само от
+       тренировъчните редове на ТОЗИ fold. Ако скалерът е учен веднъж
+       (от преди всички fold-ове), по-ранните fold-ове тестват с
+       статистика, изчислена от редове, които за тях са бъдеще.
+
+    2. Между последния тренировъчен ден и първия тестов трябва да има
+       празнина, а не директна съседност. Всяка входна последователност
+       обхваща seq_length дни история — последната тренировъчна
+       последователност и първата тестова споделят seq_length-1 от тези
+       дни. Празнина под seq_length дни не ги разделя реално, затова
+       по подразбиране gap = seq_length (изчистване по López de Prado:
+       "purging").
 
     Параметри:
     ----------
@@ -435,7 +455,7 @@ class WalkForwardValidator:
     test_window : int
         Брой дни за тестване (по подразбиране 63 = 1 тримесечие)
     step_size : int
-        Колко дни да преместим window-а (по подразбиране 21 = 1 месец)
+        Колко дни да преместим прозореца (по подразбиране 21 = 1 месец)
     """
 
     def __init__(self, train_window=252, test_window=63, step_size=21):
@@ -444,154 +464,216 @@ class WalkForwardValidator:
         self.step_size = step_size
         self.fold_results = []
 
-    def run(self, model_class, X, y, prices, initial_capital=10000, **model_kwargs):
+    def run(self, preprocessor, model_class, seq_length=60, gap=None,
+           epochs=30, batch_size=32, initial_capital=10000,
+           lstm_units=None, dropout_rate=0.2, **model_kwargs):
         """
-        Изпълнява walk-forward validation.
+        Изпълнява walk-forward validation с purging.
 
         Параметри:
         ----------
+        preprocessor : StockDataPreprocessor
+            С вече изчислени индикатори и target (calculate_technical_indicators
+            + create_target_variable), но нормализирането се прави тук,
+            отделно за всеки fold.
         model_class : class
             Класът на модела (напр. StockPredictionModel)
-        X : numpy.array
-            Входни данни (3D за LSTM)
-        y : numpy.array
-            Target стойности
-        prices : numpy.array
-            Реални цени
+        seq_length : int
+            Дължина на входната последователност
+        gap : int, optional
+            Дни между края на тренировката и началото на теста.
+            По подразбиране seq_length — виж обяснението в docstring-а на класа.
+        epochs, batch_size : int
+            Параметри за тренировка във всеки fold
         initial_capital : float
-            Начален капитал
+            Начален капитал; се пренася между fold-овете (сложна лихва)
         model_kwargs : dict
-            Допълнителни параметри за модела
+            Допълнителни параметри за model_class
 
         Връща:
         -------
         dict
             Резултати от walk-forward validation
         """
-        print(f"\n[RUN] Walk-Forward Validation")
+        from preprocessing import TARGET_COLUMN
+
+        if gap is None:
+            gap = seq_length
+
+        feature_cols = preprocessor.get_feature_columns()
+        target_raw = preprocessor.data[TARGET_COLUMN].values.astype(float)
+        labelled = np.flatnonzero(~np.isnan(target_raw))
+        if len(labelled) == 0:
+            raise ValueError("[FAIL] Няма нито един ред с етикет")
+        n = labelled[-1] + 1  # последният ред с истински target
+
+        features_raw = preprocessor.data[feature_cols].values[:n].astype(np.float32)
+        target = target_raw[:n]
+        prices_raw = preprocessor.data['Close'].values[:n]
+
+        print(f"\n[RUN] Walk-Forward Validation (с purging)")
         print(f"   Train window: {self.train_window} дни")
         print(f"   Test window: {self.test_window} дни")
         print(f"   Step size: {self.step_size} дни")
-        print(f"   Total data: {len(X)} дни\n")
+        print(f"   Gap (purge): {gap} дни")
+        print(f"   Total data: {n} дни\n")
 
         self.fold_results = []
-        all_predictions = []
-        all_actuals = []
-        all_prices = []
-
-        start = self.train_window
+        capital = initial_capital
         fold = 0
+        train_end = self.train_window
 
-        while start + self.test_window <= len(X):
+        while True:
+            train_start = max(0, train_end - self.train_window)
+            test_start = train_end + gap
+            test_end = min(test_start + self.test_window, n)
+
+            if test_end - test_start < seq_length:
+                break  # не остава достатъчно за нито една тестова последователност
+
+            # Lookback преди train_start/test_start, за да могат първите
+            # последователности във всеки прозорец да имат пълна история.
+            train_lb = max(0, train_start - seq_length + 1)
+            test_lb = max(0, test_start - seq_length + 1)
+
+            # Скалер, учен САМО от суровите тренировъчни редове на този fold
+            scaler = StandardScaler()
+            scaler.fit(features_raw[train_lb:train_end])
+
+            train_feats = scaler.transform(features_raw[train_lb:train_end])
+            test_feats = scaler.transform(features_raw[test_lb:test_end])
+
+            X_train, y_train, _ = preprocessor.create_sequences(
+                train_feats, target[train_lb:train_end], seq_length
+            )
+            X_test, y_test, test_end_idx = preprocessor.create_sequences(
+                test_feats, target[test_lb:test_end], seq_length
+            )
+
+            if len(X_train) < 20 or len(X_test) == 0:
+                train_end += self.step_size
+                continue
+
             fold += 1
-            train_end = start
-            test_end = min(start + self.test_window, len(X))
+            test_prices = prices_raw[test_lb:test_end][test_end_idx]
 
-            # Train data
-            X_train = X[:train_end]
-            y_train = y[:train_end]
+            # Проверка, че purging-ът наистина раздели редовете (виж теста
+            # test_walkforward_folds_have_no_raw_overlap)
+            last_train_raw = train_end - 1
+            first_test_raw = test_start - seq_length + 1
+            assert first_test_raw > last_train_raw, (
+                f"[FAIL] fold {fold}: purge не раздели train/test "
+                f"({last_train_raw} vs {first_test_raw})"
+            )
 
-            # Test data
-            X_test = X[train_end:test_end]
-            y_test = y[train_end:test_end]
-            test_prices = prices[train_end:test_end] if len(prices) > test_end else prices[train_end:]
-
-            if len(X_test) == 0 or len(test_prices) == 0:
-                break
-
-            # Трениране на модел
             model = model_class(
-                sequence_length=X_train.shape[1],
+                sequence_length=seq_length,
                 n_features=X_train.shape[2],
                 **model_kwargs
             )
-            model.build_lstm_model()
-
-            # Split за validation
-            val_split = int(len(X_train) * 0.9)
-            model.train_model(
-                X_train[:val_split], y_train[:val_split],
-                X_train[val_split:], y_train[val_split:],
-                epochs=30, batch_size=32
+            model.build_lstm_model(
+                lstm_units=lstm_units or [128, 64, 32],
+                dropout_rate=dropout_rate,
             )
 
-            # Предсказания
-            predictions = model.predict(X_test).flatten()
+            val_split = max(1, int(len(X_train) * 0.9))
+            model.train_model(
+                X_train[:val_split], y_train[:val_split],
+                X_train[val_split:] if val_split < len(X_train) else X_train[-1:],
+                y_train[val_split:] if val_split < len(X_train) else y_train[-1:],
+                epochs=epochs, batch_size=batch_size
+            )
 
-            # Оценка на fold-а
-            direction_pred = (predictions > 0.5).astype(int)
-            direction_true = np.asarray(y_test).ravel().astype(int)
-            accuracy = accuracy_score(direction_true, direction_pred) * 100
+            probs = model.predict(X_test).flatten()
 
-            # Trading simulation за този fold
-            capital = initial_capital
+            y_true = y_test.astype(int)
+            y_pred = (probs > 0.5).astype(int)
+            accuracy = accuracy_score(y_true, y_pred) * 100
+            majority = 1 if y_true.mean() >= 0.5 else 0
+            baseline = (y_true == majority).mean() * 100
+            edge = accuracy - baseline
+
+            # Trading simulation за този fold — капиталът се пренася напред
+            fold_start_capital = capital
             position = 0
-            for i in range(len(predictions)):
-                if predictions[i] > 0.55 and position == 0:
+            shares = 0
+            for i in range(len(probs)):
+                if probs[i] > 0.55 and position == 0:
                     shares = capital / test_prices[i]
                     capital -= shares * test_prices[i] * 1.001
                     position = 1
-                elif predictions[i] < 0.45 and position == 1:
+                elif probs[i] < 0.45 and position == 1:
                     capital += shares * test_prices[i] * 0.999
                     position = 0
-
             if position == 1:
                 capital += shares * test_prices[-1] * 0.999
 
-            fold_return = ((capital - initial_capital) / initial_capital) * 100
+            fold_return = ((capital - fold_start_capital) / fold_start_capital) * 100
+            bnh_fold_return = ((test_prices[-1] - test_prices[0]) / test_prices[0]) * 100
 
             fold_result = {
                 'fold': fold,
+                'train_start': train_start,
                 'train_end': train_end,
-                'test_start': train_end,
+                'test_start': test_start,
                 'test_end': test_end,
+                'n_train': len(X_train),
+                'n_test': len(X_test),
                 'accuracy': accuracy,
+                'baseline_accuracy': baseline,
+                'edge': edge,
                 'return_pct': fold_return,
-                'final_capital': capital
+                'buy_and_hold_pct': bnh_fold_return,
+                'capital_after': capital,
             }
             self.fold_results.append(fold_result)
 
-            all_predictions.extend(predictions)
-            all_actuals.extend(y_test)
-            all_prices.extend(test_prices)
+            print(f"   Fold {fold}: train=[{train_start}:{train_end}] "
+                  f"test=[{test_start}:{test_end}]  "
+                  f"acc={accuracy:.1f}% (baseline {baseline:.1f}%, "
+                  f"edge {edge:+.1f}%)  return={fold_return:+.2f}%  "
+                  f"capital=${capital:,.0f}")
 
-            print(f"   Fold {fold}: accuracy={accuracy:.1f}%, return={fold_return:+.2f}%")
+            train_end += self.step_size
 
-            start += self.step_size
+        if not self.fold_results:
+            print("\n[WARN] Нито един fold не се събра — данните са твърде малко "
+                  "за тези train_window/test_window/gap")
+            return {
+                'total_folds': 0, 'avg_accuracy': 0, 'avg_baseline': 0,
+                'avg_edge': 0, 'total_return': 0, 'buy_and_hold_return': 0,
+                'outperformance': 0, 'final_capital': initial_capital,
+                'fold_results': [],
+            }
 
-        # Общ резултат
-        total_return = 0
-        if self.fold_results:
-            avg_accuracy = np.mean([f['accuracy'] for f in self.fold_results])
-            avg_return = np.mean([f['return_pct'] for f in self.fold_results])
-            total_return = self.fold_results[-1]['return_pct']
+        avg_accuracy = np.mean([f['accuracy'] for f in self.fold_results])
+        avg_baseline = np.mean([f['baseline_accuracy'] for f in self.fold_results])
+        avg_edge = np.mean([f['edge'] for f in self.fold_results])
+        total_return = (capital - initial_capital) / initial_capital * 100
 
-            # Buy and Hold сравнение
-            if len(all_prices) > 1:
-                bnh_return = ((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100
-            else:
-                bnh_return = 0
-        else:
-            avg_accuracy = 0
-            avg_return = 0
-            bnh_return = 0
+        # Среден Buy & Hold на fold, за сравнение с усреднената ни възвръщаемост
+        bnh_return = np.mean([f['buy_and_hold_pct'] for f in self.fold_results])
 
         results = {
             'total_folds': fold,
             'avg_accuracy': avg_accuracy,
-            'avg_return': avg_return,
+            'avg_baseline': avg_baseline,
+            'avg_edge': avg_edge,
             'total_return': total_return,
             'buy_and_hold_return': bnh_return,
             'outperformance': total_return - bnh_return,
-            'fold_results': self.fold_results
+            'final_capital': capital,
+            'fold_results': self.fold_results,
         }
 
-        print(f"\n[INFO] Walk-Forward Summary:")
-        print(f"   Folds: {fold}")
-        print(f"   Avg Accuracy: {avg_accuracy:.1f}%")
-        print(f"   Avg Return: {avg_return:+.2f}%")
-        print(f"   Total Return: {total_return:+.2f}%")
-        print(f"   Buy & Hold: {bnh_return:+.2f}%")
+        print(f"\n[INFO] Walk-Forward Summary ({fold} fold-а):")
+        print(f"   Avg Accuracy:  {avg_accuracy:.1f}%")
+        print(f"   Avg Baseline:  {avg_baseline:.1f}%")
+        print(f"   Avg Edge:      {avg_edge:+.1f}%  "
+              f"{'[OK]' if avg_edge > 2 else '[WARN]' if avg_edge > 0 else '[FAIL]'}")
+        print(f"   Total Return:  {total_return:+.2f}% "
+              f"(капитал ${initial_capital:,.0f} -> ${capital:,.0f})")
+        print(f"   Avg Buy&Hold:  {bnh_return:+.2f}% на fold")
 
         return results
 
