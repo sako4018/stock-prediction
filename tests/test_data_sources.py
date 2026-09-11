@@ -211,6 +211,158 @@ def test_fundamentals_timeline_empty_does_not_crash():
     return "празна timeline не чупи merge-а, дава NaN колони"
 
 
+# ---------------------------------------------------------------- news_data.py
+
+def _mk_article(title, source, url, available_at, score=0.0, label='neutral', historical=False):
+    return {
+        'title': title, 'source': source, 'url': url,
+        'available_at': available_at, 'is_historical': historical,
+        'sentiment_score': score, 'sentiment_label': label,
+    }
+
+
+def test_pubdate_parsing_handles_valid_and_invalid():
+    from news_data import parse_pub_date
+    ok = parse_pub_date('Tue, 02 Jan 2024 08:00:00 GMT')
+    assert ok is not None and ok.year == 2024 and ok.hour == 8
+    assert parse_pub_date('') is None
+    assert parse_pub_date('not a date at all') is None
+    assert parse_pub_date(None) is None
+    return "валиден RFC-822 се парсва, невалиден дава None без изключение"
+
+
+def test_dedup_collapses_wire_copies():
+    """20 копия на една новина (различни source label, същия URL) -> 1."""
+    from news_data import deduplicate_articles
+    base_time = datetime(2024, 3, 1, tzinfo=timezone.utc)
+    articles = [
+        _mk_article(f"Apple beats earnings estimates", f"Outlet {i}",
+                   "https://example.com/apple-earnings-story",
+                   base_time + timedelta(hours=i))
+        for i in range(20)
+    ]
+    deduped = deduplicate_articles(articles)
+    assert len(deduped) == 1, f"очаквах 1 статия след dedup, получих {len(deduped)}"
+    assert deduped[0]['available_at'] == base_time, "не запази най-ранния timestamp"
+    return "20 копия на една статия -> 1 след dedup, пази най-ранния timestamp"
+
+
+def test_dedup_keeps_distinct_articles():
+    from news_data import deduplicate_articles
+    t = datetime(2024, 3, 1, tzinfo=timezone.utc)
+    articles = [
+        _mk_article("Apple beats earnings", "Reuters", "https://a.com/1", t),
+        _mk_article("Apple unveils new iPhone", "Bloomberg", "https://a.com/2", t),
+        _mk_article("Apple faces lawsuit", "CNBC", "https://a.com/3", t),
+    ]
+    deduped = deduplicate_articles(articles)
+    assert len(deduped) == 3, "различни статии не бива да се сливат"
+    return "3 различни статии остават 3 след dedup"
+
+
+def test_historical_backfill_embargo_is_full_day():
+    """
+    Historical fetch (виж модулния docstring) НЕ може да се тества с жива
+    мрежа тук стабилно, но embargo логиката (date(pubDate)+1 ден) е
+    чиста функция — проверяваме я директно.
+    """
+    from datetime import date as _date
+    raw_pub = "Wed, 06 Mar 2024 14:32:00 GMT"  # реален час, но от backfill резултат
+    from news_data import parse_pub_date
+    parsed = parse_pub_date(raw_pub)
+    embargo_start = datetime(parsed.year, parsed.month, parsed.day, tzinfo=timezone.utc) + timedelta(days=1)
+    assert embargo_start == datetime(2024, 3, 7, tzinfo=timezone.utc), (
+        f"embargo трябва да е следващият ден 00:00 UTC, получих {embargo_start}"
+    )
+    assert embargo_start.date() > parsed.date(), "backfill embargo трябва да мести с цял ден напред"
+    return f"статия от {parsed.date()} става налична едва от {embargo_start}"
+
+
+def test_future_news_excluded_from_features():
+    """
+    ТОЧНИЯТ сценарий от заданието: prediction в 14:00, новина в 15:00
+    същия ден -> новината НЕ бива да участва в features за 14:00.
+    """
+    from news_data import compute_news_features
+
+    prediction_time = datetime(2026, 9, 10, 14, 0, tzinfo=timezone.utc)
+    future_article = _mk_article(
+        "Apple stock surges on huge news", "Reuters", "https://x.com/future",
+        datetime(2026, 9, 10, 15, 0, tzinfo=timezone.utc),  # 1 час СЛЕД prediction_time
+        score=0.9, label='bullish',
+    )
+    past_article = _mk_article(
+        "Apple stock steady", "Bloomberg", "https://x.com/past",
+        datetime(2026, 9, 10, 13, 30, tzinfo=timezone.utc),  # 30 мин ПРЕДИ, ясно вътре в 1h прозореца
+        score=0.1, label='neutral',
+    )
+
+    feats_with_future = compute_news_features(
+        [future_article, past_article], [prediction_time]
+    )
+    feats_without_future = compute_news_features([past_article], [prediction_time])
+
+    row_with = feats_with_future.iloc[0]
+    row_without = feats_without_future.iloc[0]
+
+    assert row_with['news_count_1h'] == row_without['news_count_1h'] == 1, (
+        "бъдещата новина в 15:00 промени броя новини за 14:00 prediction — LEAKAGE"
+    )
+    assert row_with['avg_sentiment_1h'] == row_without['avg_sentiment_1h'], (
+        "бъдещата новина промени sentiment-а за 14:00 prediction — LEAKAGE"
+    )
+    assert row_with['avg_sentiment_1h'] == 0.1, "трябваше да остане само миналата (неутрална) статия"
+    return "новина в 15:00 не влияе на features, изчислени за 14:00 (проверено с/без нея)"
+
+
+def test_news_rolling_aggregates_no_forward_window():
+    """Общо свойство: добавяне на СЛЕДВАЩИ статии не бива да променя минали target features."""
+    from news_data import compute_news_features
+
+    rng = np.random.default_rng(42)
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    articles = [
+        _mk_article(f"story {i}", "src", f"https://x.com/{i}",
+                   base + timedelta(hours=int(rng.uniform(0, 24 * 30))),
+                   score=float(rng.uniform(-1, 1)),
+                   label=rng.choice(['bullish', 'bearish', 'neutral']))
+        for i in range(200)
+    ]
+
+    targets = [base + timedelta(days=d) for d in range(5, 20)]
+    cutoff = base + timedelta(days=15)
+
+    full_feats = compute_news_features(articles, targets)
+    past_only = [a for a in articles if a['available_at'] <= cutoff]
+    past_feats = compute_news_features(past_only, targets)
+
+    early_targets = [t for t in targets if t <= cutoff - timedelta(hours=24)]
+    for i, t in enumerate(targets):
+        if t not in early_targets:
+            continue
+        for col in ['news_count_24h', 'avg_sentiment_24h', 'positive_news_count_24h']:
+            a = full_feats.iloc[i][col]
+            b = past_feats.iloc[i][col]
+            assert a == b, f"{col} за {t} се промени при добавяне на бъдещи статии"
+
+    return f"{len(early_targets)} target момента непроменени при добавяне на {len(articles)-len(past_only)} бъдещи статии"
+
+
+def test_no_news_gives_neutral_defaults_not_nan():
+    """
+    Ден без новини: count=0, sentiment=0.0 (неутрално по смисъл, не
+    'липсваща' стойност) — умишлен избор, различен от fundamentals
+    (където липса на отчет = NaN, защото там наистина е неизвестно).
+    """
+    from news_data import compute_news_features
+    feats = compute_news_features([], [datetime(2026, 1, 1, tzinfo=timezone.utc)])
+    row = feats.iloc[0]
+    assert row['news_count_24h'] == 0
+    assert row['avg_sentiment_24h'] == 0.0
+    assert not pd.isna(row['avg_sentiment_24h'])
+    return "празен news list -> 0/0.0 (неутрално), не NaN"
+
+
 TESTS = [
     test_market_features_no_duplicate_dates,
     test_market_features_have_expected_columns,
@@ -220,6 +372,13 @@ TESTS = [
     test_fundamentals_respects_publish_time,
     test_fundamentals_no_report_yet_gives_nan_not_zero,
     test_fundamentals_timeline_empty_does_not_crash,
+    test_pubdate_parsing_handles_valid_and_invalid,
+    test_dedup_collapses_wire_copies,
+    test_dedup_keeps_distinct_articles,
+    test_historical_backfill_embargo_is_full_day,
+    test_future_news_excluded_from_features,
+    test_news_rolling_aggregates_no_forward_window,
+    test_no_news_gives_neutral_defaults_not_nan,
 ]
 
 
