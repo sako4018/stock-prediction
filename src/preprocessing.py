@@ -22,6 +22,19 @@ TARGET_COLUMNS = ['Future_Price', 'Price_Direction']
 # Колоната, която моделът предсказва: 1 = утре нагоре, 0 = утре надолу.
 TARGET_COLUMN = 'Price_Direction'
 
+# Колони в абсолютни нива (долари, брой акции). Растат с годините, затова
+# стойностите от теста са извън диапазона, който моделът е виждал в
+# тренировката — и той няма как да ги разпознае. Остават в self.data за
+# графики и backtest, но никога не влизат в модела. За всяка от тях има
+# стационарен заместител: съотношение или процентна промяна.
+NON_STATIONARY_COLUMNS = [
+    'Open', 'High', 'Low', 'Close', 'Volume',
+    'SMA_20', 'SMA_50', 'EMA_12', 'EMA_26',
+    'MACD', 'MACD_Signal', 'MACD_Histogram',
+    'BB_Middle', 'BB_Upper', 'BB_Lower',
+    'ATR', 'HL_Range', 'OC_Range', 'OBV', 'VWAP',
+]
+
 
 class StockDataPreprocessor:
     """
@@ -130,8 +143,13 @@ class StockDataPreprocessor:
         # Натрупване на обем base на посоката на цената
         df['OBV'] = (np.sign(df['Close'].diff()) * df['Volume']).fillna(0).cumsum()
 
-        # 14. VWAP (Volume Weighted Average Price) - approximation
-        df['VWAP'] = (df['Volume'] * (df['High'] + df['Low'] + df['Close']) / 3).cumsum() / df['Volume'].cumsum()
+        # 14. VWAP (Volume Weighted Average Price) — пълзящ прозорец.
+        # Кумулативен VWAP от началото на серията зависи от това откога сме
+        # свалили данните, което го прави безсмислен като сигнал.
+        vwap_w = min(20, max(5, n // 3))
+        typical = (df['High'] + df['Low'] + df['Close']) / 3
+        df['VWAP'] = ((typical * df['Volume']).rolling(vwap_w).sum()
+                      / df['Volume'].rolling(vwap_w).sum())
 
         # 15. MFI (Money Flow Index) - RSI с обем
         mfi_w = min(14, max(5, n // 3))
@@ -184,6 +202,49 @@ class StockDataPreprocessor:
         # 22. Exponential weighted moving stats
         ewma_span = min(20, max(5, n // 3))
         df['EWMA_Volatility'] = df['Price_Change'].ewm(span=ewma_span).std() * np.sqrt(252)
+
+        # === 23. СТАЦИОНАРНИ ЗАМЕСТИТЕЛИ НА НИВАТА ===
+        # Всяко абсолютно ниво се превръща в съотношение или процент, за да
+        # значи едно и също при цена $50 и при цена $500.
+        close = df['Close']
+
+        df['Close_vs_SMA20'] = close / df['SMA_20'] - 1
+        df['Close_vs_SMA50'] = close / df['SMA_50'] - 1
+        df['SMA20_vs_SMA50'] = df['SMA_20'] / df['SMA_50'] - 1
+        df['Close_vs_EMA12'] = close / df['EMA_12'] - 1
+        df['EMA12_vs_EMA26'] = df['EMA_12'] / df['EMA_26'] - 1
+
+        df['MACD_Norm'] = df['MACD'] / close
+        df['MACD_Hist_Norm'] = df['MACD_Histogram'] / close
+
+        # Къде е цената в Bollinger канала: 0 = долната лента, 1 = горната
+        df['BB_Position'] = ((close - df['BB_Lower'])
+                             / (df['BB_Upper'] - df['BB_Lower']))
+
+        df['HL_Range_Pct'] = (df['High'] - df['Low']) / close * 100
+        df['OC_Range_Pct'] = (close - df['Open']) / close * 100
+        df['Gap_Pct'] = (df['Open'] / close.shift(1) - 1) * 100
+
+        vol_avg = df['Volume'].rolling(window=min(20, max(5, n // 3))).mean()
+        df['Volume_Ratio'] = df['Volume'] / vol_avg
+        df['OBV_Norm'] = df['OBV'].diff() / vol_avg
+        df['Close_vs_VWAP'] = close / df['VWAP'] - 1
+
+        # === 24. КАЛЕНДАРНИ ===
+        # Отчетите на компаниите се струпват около края на тримесечията,
+        # а част от обема е свързан с края на месеца.
+        # utc=True, защото CSV от различни сесии може да смесва часови зони
+        # (yfinance връща tz-aware дати) и pandas отказва да ги обедини.
+        raw_dates = df['Date'] if 'Date' in df.columns else df.index
+        dates = pd.DatetimeIndex(pd.to_datetime(raw_dates, utc=True))
+
+        df['Day_Of_Week'] = dates.dayofweek
+        df['Is_Quarter_Month'] = (dates.month % 3 == 0).astype(int)
+        df['Is_Month_End'] = dates.is_month_end.astype(int)
+
+        # Деления като pct_change и Close/SMA могат да дадат inf при нула.
+        # Ако inf стигне до скалера, цялата колона става безполезна.
+        df = df.replace([np.inf, -np.inf], np.nan)
 
         # Запълване на NaN стойности — запазваме всички дати
         # Оригиналните цени (Open/High/Low/Close/Volume) никога нямат NaN
@@ -278,11 +339,12 @@ class StockDataPreprocessor:
         """
         Имената на колоните, които влизат в модела като features.
 
-        Изключва Date (не е число) и target колоните — ако Price_Direction
-        остане във features, моделът чете отговора направо от входа.
+        Изключва Date (не е число), target колоните — ако Price_Direction
+        остане във features, моделът чете отговора направо от входа — и
+        абсолютните нива, които не са сравними между различни периоди.
         """
         source = self.scaled_data if self.scaled_data is not None else self.data
-        excluded = set(['Date'] + TARGET_COLUMNS)
+        excluded = set(['Date'] + TARGET_COLUMNS + NON_STATIONARY_COLUMNS)
         return [c for c in source.columns if c not in excluded]
 
     def create_sequences(self, features, target, seq_length=60):

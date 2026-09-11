@@ -73,6 +73,60 @@ def test_targets_not_in_features():
     return f"{len(cols)} feature колони, без нито един target"
 
 
+def test_price_levels_are_not_features():
+    """Абсолютните нива остават за графики, но не влизат в модела."""
+    p = build(make_random_walk())
+    cols = set(p.get_feature_columns())
+
+    for bad in ['Open', 'High', 'Low', 'Close', 'Volume', 'SMA_20', 'SMA_50',
+                'EMA_12', 'MACD', 'BB_Upper', 'BB_Lower', 'ATR', 'OBV', 'VWAP']:
+        assert bad not in cols, f"{bad} е абсолютно ниво, а е във features"
+        assert bad in p.data.columns, f"{bad} трябва да остане в self.data"
+
+    for good in ['Close_vs_SMA20', 'SMA20_vs_SMA50', 'MACD_Norm', 'BB_Position',
+                 'Volume_Ratio', 'OBV_Norm', 'Close_vs_VWAP', 'Gap_Pct',
+                 'HL_Range_Pct', 'Is_Quarter_Month', 'Day_Of_Week']:
+        assert good in cols, f"липсва стационарният заместител {good}"
+    return f"{len(cols)} стационарни features, нивата са изключени"
+
+
+def test_features_are_stationary():
+    """
+    Върху силно растяща серия нито един feature не бива да следва тренда.
+    Ако следва, стойностите му в теста са извън диапазона от тренировката.
+    """
+    df = make_random_walk(n=800, seed=11, drift=0.0012)
+    p = build(df)
+    cols = p.get_feature_columns()
+
+    # Ненормализирани стойности — тестваме самите features, не скалера
+    feats = p.data[cols].values.astype(float)
+    t = np.arange(len(feats), dtype=float)
+
+    worst, worst_col = 0.0, None
+    for j, c in enumerate(cols):
+        v = feats[:, j]
+        if np.std(v) < 1e-12 or not np.isfinite(v).all():
+            continue
+        r = abs(np.corrcoef(t, v)[0, 1])
+        if r > worst:
+            worst, worst_col = r, c
+
+    price_corr = abs(np.corrcoef(t, p.data['Close'].values)[0, 1])
+    assert price_corr > 0.8, "тестовата серия не е достатъчно трендова"
+    assert worst < 0.8, \
+        f"'{worst_col}' следва тренда (corr={worst:.2f}) — не е стационарен"
+    return (f"най-трендов feature: {worst_col} (corr={worst:.2f}), "
+            f"докато цената е {price_corr:.2f}")
+
+
+def test_no_infinities_in_features():
+    p = build(make_random_walk(n=400, seed=5))
+    feats = p.data[p.get_feature_columns()].values.astype(float)
+    assert np.isfinite(feats).all(), "има inf или NaN във features"
+    return "няма inf/NaN"
+
+
 def test_alignment_has_no_lookahead():
     """y[k] трябва да е посоката на деня, с който свършва прозорецът."""
     p = build(make_random_walk())
@@ -211,6 +265,9 @@ def test_old_models_are_rejected():
 
 TESTS = [
     test_targets_not_in_features,
+    test_price_levels_are_not_features,
+    test_features_are_stationary,
+    test_no_infinities_in_features,
     test_alignment_has_no_lookahead,
     test_target_is_binary,
     test_latest_sequence_ends_with_today,
