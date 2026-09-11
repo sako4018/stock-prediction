@@ -37,8 +37,9 @@ data/*.json
 models/*.keras
 models/*.h5
 models/*.pkl
-models/*.joblib
 !models/.gitkeep
+# Скалерите (*_scaler.joblib) НЕ се игнорират — без тях .pt файловете не
+# могат да се заредят (load_model() изисква записан скалер, виж model.py)
 
 # Logs
 *.log
