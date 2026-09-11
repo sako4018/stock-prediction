@@ -138,34 +138,29 @@ def _merge_news(preprocessor, ticker):
     return new_cols
 
 
-def build_dataset(ticker, period=None, feature_groups=None, seq_length=None,
-                  train_size=None, days_ahead=None):
+def build_raw_frame(ticker, period=None, feature_groups=None, days_ahead=None,
+                    price_data=None):
     """
-    Оркестрира целия feature pipeline: price+technical (винаги) -> по
-    избор market/fundamental/news -> изчистване на непълни редове ->
-    normalize -> sequences.
+    Суровата (нескалирана) част от pipeline-а: сваляне -> индикатори ->
+    target -> по избор market/fundamental/news -> изхвърляне на редовете
+    без пълно покритие.
+
+    Изнесена отделно, защото pooled_dataset.py има нужда точно от този
+    междинен резултат: там скалерът се учи от всички тикери наведнъж,
+    затова нормализацията не може да стане тук, за всеки тикер поотделно.
 
     Параметри:
     ----------
-    ticker : str
-    period : str, optional
-        По подразбиране config.DEFAULT_PERIOD
-    feature_groups : tuple[str], optional
-        Подмножество от ALL_FEATURE_GROUPS. По подразбиране
-        config.DEFAULT_FEATURE_GROUPS ('price','technical' — работи
-        винаги, без мрежа/кеш за market/news/fundamental).
-    seq_length, train_size, days_ahead : optional
-        По подразбиране от config.py
+    price_data : pandas.DataFrame, optional
+        Вече свалени OHLCV данни (напр. от локален кеш). Ако липсва,
+        се сваля наново.
 
     Връща:
     -------
-    dict: X, y, prices, feature_names, feature_groups (реално използвани
-    имена по група — за UI/feature-importance/ablation), preprocessor
+    tuple: (preprocessor, used_groups)
     """
     period = period or cfg.DEFAULT_PERIOD
     feature_groups = tuple(feature_groups or cfg.DEFAULT_FEATURE_GROUPS)
-    seq_length = seq_length or cfg.SEQUENCE_LENGTH
-    train_size = train_size if train_size is not None else cfg.TRAIN_SIZE
     days_ahead = days_ahead or cfg.PREDICTION_HORIZON_DAYS
 
     unknown = set(feature_groups) - set(ALL_FEATURE_GROUPS)
@@ -175,12 +170,13 @@ def build_dataset(ticker, period=None, feature_groups=None, seq_length=None,
 
     print(f"[FEATURES] Групи: {feature_groups}")
 
-    collector = StockDataCollector(ticker=ticker, period=period, interval='1d')
-    data = collector.fetch_stock_data(save_to_csv=False)
-    if data is None or data.empty:
+    if price_data is None:
+        collector = StockDataCollector(ticker=ticker, period=period, interval='1d')
+        price_data = collector.fetch_stock_data(save_to_csv=False)
+    if price_data is None or price_data.empty:
         raise ValueError(f"[FEATURES] Няма данни за {ticker}")
 
-    preprocessor = StockDataPreprocessor(data)
+    preprocessor = StockDataPreprocessor(price_data)
     preprocessor.calculate_technical_indicators()
     preprocessor.create_target_variable(days_ahead=days_ahead)
 
@@ -208,6 +204,41 @@ def build_dataset(ticker, period=None, feature_groups=None, seq_length=None,
         if dropped:
             print(f"[FEATURES] Изхвърлени {dropped} реда без пълно покритие "
                  f"на market/fundamental данните")
+
+    return preprocessor, used_groups
+
+
+def build_dataset(ticker, period=None, feature_groups=None, seq_length=None,
+                  train_size=None, days_ahead=None):
+    """
+    Оркестрира целия feature pipeline: price+technical (винаги) -> по
+    избор market/fundamental/news -> изчистване на непълни редове ->
+    normalize -> sequences.
+
+    Параметри:
+    ----------
+    ticker : str
+    period : str, optional
+        По подразбиране config.DEFAULT_PERIOD
+    feature_groups : tuple[str], optional
+        Подмножество от ALL_FEATURE_GROUPS. По подразбиране
+        config.DEFAULT_FEATURE_GROUPS ('price','technical' — работи
+        винаги, без мрежа/кеш за market/news/fundamental).
+    seq_length, train_size, days_ahead : optional
+        По подразбиране от config.py
+
+    Връща:
+    -------
+    dict: X, y, prices, feature_names, feature_groups (реално използвани
+    имена по група — за UI/feature-importance/ablation), preprocessor
+    """
+    seq_length = seq_length or cfg.SEQUENCE_LENGTH
+    train_size = train_size if train_size is not None else cfg.TRAIN_SIZE
+    feature_groups = tuple(feature_groups or cfg.DEFAULT_FEATURE_GROUPS)
+
+    preprocessor, used_groups = build_raw_frame(
+        ticker, period=period, feature_groups=feature_groups, days_ahead=days_ahead
+    )
 
     preprocessor.normalize_data(train_size=train_size, seq_length=seq_length)
     X, y, prices = preprocessor.prepare_model_data(seq_length=seq_length, train_size=train_size)

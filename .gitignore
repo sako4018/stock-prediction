@@ -74,3 +74,6 @@ graphify-out/
 node_modules/
 frontend/node_modules/
 frontend/nul
+
+# Кеш на свалените цени (регенерира се сам)
+data/prices/
