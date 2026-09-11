@@ -31,6 +31,8 @@ wheels/
 # Data files
 data/*.csv
 data/*.json
+data/market/
+data/news/
 !data/.gitkeep
 
 # Model files (големи файлове)
