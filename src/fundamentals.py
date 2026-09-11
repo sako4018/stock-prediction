@@ -263,11 +263,19 @@ def get_fundamentals_timeline(ticker: str, price_history: Optional[pd.DataFrame]
     timeline['pe_ratio_at_report'] = np.nan
     if price_history is not None and not price_history.empty:
         ph = price_history[['Date', 'Close']].copy()
-        ph['Date'] = pd.to_datetime(ph['Date'], utc=True)
+        # datetime64[ns, UTC] навсякъде — merge_asof отказва ключове с
+        # различна прецизност (s/us/ns), а различните pandas пътища тук
+        # могат да върнат различна.
+        ph['Date'] = pd.to_datetime(ph['Date'], utc=True).astype('datetime64[ns, UTC]')
         ph = ph.sort_values('Date')
 
+        avail_col = timeline[['available_at']].copy()
+        avail_col['available_at'] = pd.to_datetime(
+            avail_col['available_at'], utc=True
+        ).astype('datetime64[ns, UTC]')
+
         priced = pd.merge_asof(
-            timeline[['available_at']].sort_values('available_at'),
+            avail_col.sort_values('available_at'),
             ph.rename(columns={'Date': 'available_at'}),
             on='available_at', direction='backward'
         )
@@ -305,7 +313,7 @@ def merge_fundamentals_asof(price_df: pd.DataFrame, timeline_df: pd.DataFrame,
         price_df + fundamentals колоните (без available_at), подравнени.
     """
     left = price_df.copy()
-    left[date_col] = pd.to_datetime(left[date_col], utc=True)
+    left[date_col] = pd.to_datetime(left[date_col], utc=True).astype('datetime64[ns, UTC]')
     left = left.sort_values(date_col).reset_index(drop=True)
 
     if timeline_df is None or timeline_df.empty:
@@ -315,7 +323,7 @@ def merge_fundamentals_asof(price_df: pd.DataFrame, timeline_df: pd.DataFrame,
         return left
 
     right = timeline_df.copy().sort_values('available_at')
-    right['available_at'] = pd.to_datetime(right['available_at'], utc=True)
+    right['available_at'] = pd.to_datetime(right['available_at'], utc=True).astype('datetime64[ns, UTC]')
 
     merged = pd.merge_asof(
         left, right.rename(columns={'available_at': date_col}),

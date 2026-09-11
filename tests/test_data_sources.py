@@ -363,6 +363,34 @@ def test_no_news_gives_neutral_defaults_not_nan():
     return "празен news list -> 0/0.0 (неутрално), не NaN"
 
 
+# ---------------------------------------------------------------- feature_pipeline.py
+# (само бързи/без мрежа проверки тук — пълният build_dataset() с реални
+# market/news/fundamentals данни е проверен ръчно на живо: 5 групи, 405
+# usable реда от 453, 345 последователности, 69 features общо)
+
+def test_split_price_technical_keywords():
+    from feature_pipeline import _split_price_technical
+    cols = ['RSI', 'Close_vs_SMA20', 'MACD_Norm', 'BB_Position', 'ADX',
+           'Gap_Pct', 'Stoch_K', 'Day_Of_Week', 'CCI', 'MFI']
+    price, technical = _split_price_technical(cols)
+    assert 'Close_vs_SMA20' in price and 'BB_Position' in price and 'Gap_Pct' in price
+    assert 'RSI' in technical and 'ADX' in technical and 'CCI' in technical
+    assert set(price) | set(technical) == set(cols)
+    assert not (set(price) & set(technical))
+    return f"{len(price)} price-like, {len(technical)} technical, без препокриване"
+
+
+def test_build_dataset_rejects_unknown_feature_group():
+    """Валидацията пада ПРЕДИ да удари мрежата — бърз тест, без network I/O."""
+    from feature_pipeline import build_dataset
+    try:
+        build_dataset('AAPL', feature_groups=('price', 'not_a_real_group'))
+        raise AssertionError("трябваше да гръмне на непозната feature група")
+    except ValueError as e:
+        assert 'not_a_real_group' in str(e)
+        return "непозната feature група се отхвърля преди мрежова заявка"
+
+
 TESTS = [
     test_market_features_no_duplicate_dates,
     test_market_features_have_expected_columns,
@@ -379,6 +407,8 @@ TESTS = [
     test_future_news_excluded_from_features,
     test_news_rolling_aggregates_no_forward_window,
     test_no_news_gives_neutral_defaults_not_nan,
+    test_split_price_technical_keywords,
+    test_build_dataset_rejects_unknown_feature_group,
 ]
 
 

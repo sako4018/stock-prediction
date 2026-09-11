@@ -10,3 +10,4 @@ pydantic
 python-multipart
 lightgbm
 catboost
+python-dotenv

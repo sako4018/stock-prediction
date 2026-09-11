@@ -50,6 +50,10 @@ NON_STATIONARY_COLUMNS = [
     'MACD', 'MACD_Signal', 'MACD_Histogram',
     'BB_Middle', 'BB_Upper', 'BB_Lower',
     'ATR', 'HL_Range', 'OC_Range', 'OBV', 'VWAP',
+    # От fundamentals.py: суровите долари растат с годините на компанията
+    # точно както цената на акцията. feature_pipeline.py добавя стационарни
+    # заместители (revenue_yoy_growth, net_income_margin) от тях.
+    'revenue', 'net_income',
 ]
 
 
