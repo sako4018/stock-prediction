@@ -83,6 +83,48 @@ class PredictResponse(BaseModel):
     confidence: float
 
 
+def load_or_train_model(preprocessor, ticker, seq_length=60, train_size=0.8,
+                        epochs=50):
+    """
+    Връща (model, X, y, prices) с гарантирано съвпадащ скалер.
+
+    Ако има записан модел, данните се пренормализират с НЕГОВИЯ скалер —
+    иначе входовете са в друга скала от тази, в която моделът е учил.
+    Ако няма, тренира се нов и се записва заедно със скалера си.
+
+    Тази логика беше повторена в пет endpoint-а; редът на стъпките има
+    значение и едно копие е достатъчно, за да се разминат.
+    """
+    model_name = f'{ticker.upper()}_stock_model'
+
+    model = StockPredictionModel(sequence_length=seq_length, n_features=1)
+    loaded = False
+    try:
+        model.load_model(model_name)
+        preprocessor.apply_scaler(model.scaler, model.scaler_columns)
+        loaded = True
+    except Exception:
+        pass
+
+    X, y, prices = preprocessor.prepare_model_data(
+        seq_length=seq_length, train_size=train_size
+    )
+
+    if not loaded:
+        split = int(len(X) * train_size)
+        val = int(split * 0.9)
+        model = StockPredictionModel(sequence_length=seq_length,
+                                     n_features=X.shape[2])
+        model.build_lstm_model()
+        model.train_model(X[:val], y[:val], X[val:split], y[val:split],
+                          epochs=epochs, batch_size=32)
+        model.save_model(model_name,
+                         scaler=preprocessor.scaler,
+                         feature_columns=preprocessor.scaled_columns)
+
+    return model, X, y, prices
+
+
 @app.get("/")
 def root():
     return {"message": "Stock Prediction API", "version": "1.0.0"}
@@ -284,31 +326,13 @@ def predict_stock(ticker: str, period: str = "2y"):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        # Подготовка на последователности (target = посока 0/1)
-        feature_cols = preprocessor.get_feature_columns()
-        model_data = preprocessor.scaled_data[feature_cols].values
-
         seq_length = 60
-        if len(model_data) < seq_length:
+        if len(preprocessor.data) < seq_length:
             raise HTTPException(status_code=400, detail="Not enough data for prediction")
 
-        X, y, prices = preprocessor.prepare_model_data(seq_length=seq_length)
-
-        # Зареждане на модел
-        model = StockPredictionModel(sequence_length=seq_length, n_features=X.shape[2])
-        model_name = f'{ticker.upper()}_stock_model'
-
-        try:
-            model.load_model(model_name)
-        except:
-            # Ако няма модел, тренираме нов
-            split_idx = int(len(X) * 0.9)
-            X_train, X_val = X[:split_idx], X[split_idx:]
-            y_train, y_val = y[:split_idx], y[split_idx:]
-
-            model.build_lstm_model()
-            model.train_model(X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
-            model.save_model(model_name)
+        model, X, y, prices = load_or_train_model(
+            preprocessor, ticker, seq_length=seq_length, epochs=50
+        )
 
         # Предсказание за утре, от прозорец завършващ с днешния ден
         latest_data = preprocessor.get_latest_sequence(seq_length)
@@ -352,32 +376,21 @@ def get_combined_signal(ticker: str, period: str = "2y"):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        feature_cols = preprocessor.get_feature_columns()
-        model_data = preprocessor.scaled_data[feature_cols].values
-
         # === 2. ML PREDICTION ===
         ml_prediction = 0.5
         model_metrics = {}
 
-        if len(model_data) >= 60:
-            X, y, prices = preprocessor.prepare_model_data(seq_length=60)
-            split_idx = int(len(X) * 0.9)
-            X_train, X_val = X[:split_idx], X[split_idx:]
-            y_train, y_val = y[:split_idx], y[split_idx:]
-
-            model = StockPredictionModel(sequence_length=60, n_features=X.shape[2])
-            model_name = f'{ticker.upper()}_stock_model'
-
-            try:
-                model.load_model(model_name)
-            except:
-                model.build_lstm_model()
-                model.train_model(X_train, y_train, X_val, y_val, epochs=20, batch_size=32)
-                model.save_model(model_name)
+        if len(preprocessor.data) >= 60:
+            model, X, y, prices = load_or_train_model(
+                preprocessor, ticker, seq_length=60, epochs=20
+            )
 
             latest_data = preprocessor.get_latest_sequence(60)
             ml_prediction = float(model.predict(latest_data)[0][0])
-            model_metrics = model.evaluate(X_val, y_val)
+
+            # Метрики върху частта, която не е ползвана за тренировка
+            split_idx = int(len(X) * 0.8)
+            model_metrics = model.evaluate(X[split_idx:], y[split_idx:])
 
         # === 3. INDICATORS ===
         df = preprocessor.data
@@ -494,9 +507,11 @@ def train_model(ticker: str, request: TrainRequest):
         history = model.train_model(X_train, y_train, X_val, y_val,
                                    epochs=request.epochs, batch_size=request.batch_size)
 
-        # Запазване
+        # Запазване заедно със скалера, с който е учил
         model_name = f'{ticker.upper()}_stock_model'
-        model.save_model(model_name)
+        model.save_model(model_name,
+                         scaler=preprocessor.scaler,
+                         feature_columns=preprocessor.scaled_columns)
 
         return {
             "ticker": ticker.upper(),
@@ -528,26 +543,14 @@ def run_backtest(ticker: str, period: str = "2y", initial_capital: float = 10000
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        # Подготовка (target = посока 0/1)
-        X, y, prices = preprocessor.prepare_model_data(seq_length=60)
+        # Подготовка (target = посока 0/1) + модел със съвпадащ скалер
         train_size = 0.8
+        model, X, y, prices = load_or_train_model(
+            preprocessor, ticker, seq_length=60, train_size=train_size, epochs=50
+        )
         split_idx = int(len(X) * train_size)
         X_train, X_test = X[:split_idx], X[split_idx:]
         y_train, y_test = y[:split_idx], y[split_idx:]
-
-        # Зареждане/трениране на модел
-        model = StockPredictionModel(sequence_length=60, n_features=X.shape[2])
-        model_name = f'{ticker.upper()}_stock_model'
-
-        try:
-            model.load_model(model_name)
-        except:
-            val_split = int(len(X_train) * 0.9)
-            model.build_lstm_model()
-            model.train_model(X_train[:val_split], y_train[:val_split],
-                            X_train[val_split:], y_train[val_split:],
-                            epochs=50, batch_size=32)
-            model.save_model(model_name)
 
         # Предсказания (вероятности за покачване)
         predictions = model.predict(X_test)
@@ -731,23 +734,11 @@ def export_report(ticker: str, format: str = "json"):
         preprocessor.create_target_variable(days_ahead=1)
         preprocessor.normalize_data()
 
-        X, y, prices = preprocessor.prepare_model_data(seq_length=60)
+        model, X, y, prices = load_or_train_model(
+            preprocessor, ticker, seq_length=60, epochs=30
+        )
         split_idx = int(len(X) * 0.8)
-        X_train, X_test = X[:split_idx], X[split_idx:]
-        y_train, y_test = y[:split_idx], y[split_idx:]
-
-        model = StockPredictionModel(sequence_length=60, n_features=X.shape[2])
-        model_name = f'{ticker.upper()}_stock_model'
-
-        try:
-            model.load_model(model_name)
-        except:
-            val_split = int(len(X_train) * 0.9)
-            model.build_lstm_model()
-            model.train_model(X_train[:val_split], y_train[:val_split],
-                            X_train[val_split:], y_train[val_split:],
-                            epochs=30, batch_size=32)
-            model.save_model(model_name)
+        X_test, y_test = X[split_idx:], y[split_idx:]
 
         predictions = model.predict(X_test)
         test_prices = prices[split_idx:]

@@ -127,6 +127,82 @@ def test_no_infinities_in_features():
     return "няма inf/NaN"
 
 
+def test_scaler_sees_only_training_rows():
+    """Скалерът не бива да е видял нито един ред от тестовите прозорци."""
+    p = build(make_random_walk(n=600, seed=13))
+    X, y, _ = p.prepare_model_data(seq_length=SEQ, train_size=0.8)
+
+    cols = p.scaled_columns
+    raw = p.data[cols].values.astype(float)
+    fit_rows = p._fit_rows
+
+    split = int(len(X) * 0.8)
+    assert fit_rows <= split, \
+        f"скалерът е видял {fit_rows} реда, а тестът почва на ред {split}"
+
+    assert np.allclose(p.scaler.mean_, raw[:fit_rows].mean(axis=0)), \
+        "скалерът не е трениран точно от тренировъчните редове"
+    assert not np.allclose(p.scaler.mean_, raw.mean(axis=0)), \
+        "скалерът е видял целите данни"
+    return f"скалер от първите {fit_rows} реда, тестът почва на {split}"
+
+
+def test_standard_scaler_keeps_signal_wide():
+    """
+    MinMax свиваше дневните промени под 0.1 std, докато осцилаторите
+    оставаха широки. След StandardScaler всички са сравними.
+    """
+    p = build(make_random_walk(n=600, seed=17))
+    p.prepare_model_data(seq_length=SEQ, train_size=0.8)
+
+    cols = p.get_feature_columns()
+    scaled = p.scaled_data[cols].values.astype(float)
+    stds = scaled.std(axis=0)
+
+    for name in ['Price_Change', 'Gap_Pct', 'OC_Range_Pct']:
+        s = stds[cols.index(name)]
+        assert s > 0.5, f"{name} е смачкан до std={s:.3f}"
+
+    ratio = stds.max() / max(stds.min(), 1e-9)
+    assert ratio < 10, f"разликата между най-широкия и най-тесния е {ratio:.1f}x"
+    return f"std между {stds.min():.2f} и {stds.max():.2f} ({ratio:.1f}x разлика)"
+
+
+def test_scaler_travels_with_model():
+    """Записаният модел носи скалера си и го налага върху новите данни."""
+    import shutil
+    models_dir = os.path.join(os.path.dirname(__file__), '..', 'models')
+    name = '__scaler_roundtrip'
+
+    p = build(make_random_walk(n=300, seed=21))
+    X, y, _ = p.prepare_model_data(seq_length=SEQ)
+    m = train_quick(X[:200], y[:200], X[200:], y[200:], epochs=3)
+
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            m.save_model(name, scaler=p.scaler, feature_columns=p.scaled_columns)
+            m2 = StockPredictionModel()
+            m2.load_model(name)
+
+        assert m2.scaler is not None, "скалерът не е зареден"
+        assert m2.scaler_columns == p.scaled_columns, "редът на колоните се разминава"
+        assert np.allclose(m2.scaler.mean_, p.scaler.mean_)
+
+        # По-дълга серия има свой различен скалер — моделът налага своя
+        p2 = build(make_random_walk(n=450, seed=21))
+        own = p2.get_latest_sequence(SEQ).copy()
+        p2.apply_scaler(m2.scaler, m2.scaler_columns)
+        imposed = p2.get_latest_sequence(SEQ)
+        assert not np.allclose(own, imposed), \
+            "apply_scaler не промени нищо — записаният скалер се игнорира"
+    finally:
+        for suffix in ['.pt', '_config.json', '_history.json', '_scaler.joblib']:
+            path = os.path.join(models_dir, f'{name}{suffix}')
+            if os.path.exists(path):
+                os.remove(path)
+    return "скалерът се записва, зарежда и се налага при предсказване"
+
+
 def test_alignment_has_no_lookahead():
     """y[k] трябва да е посоката на деня, с който свършва прозорецът."""
     p = build(make_random_walk())
@@ -268,6 +344,9 @@ TESTS = [
     test_price_levels_are_not_features,
     test_features_are_stationary,
     test_no_infinities_in_features,
+    test_scaler_sees_only_training_rows,
+    test_standard_scaler_keeps_signal_wide,
+    test_scaler_travels_with_model,
     test_alignment_has_no_lookahead,
     test_target_is_binary,
     test_latest_sequence_ends_with_today,

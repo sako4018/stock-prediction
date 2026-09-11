@@ -11,7 +11,7 @@ Preprocessing Module
 
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -48,8 +48,10 @@ class StockDataPreprocessor:
 
     def __init__(self, data):
         self.data = data.copy()
-        self.scaler = MinMaxScaler(feature_range=(0, 1))
+        self.scaler = None
         self.scaled_data = None
+        self._scaled_columns = None
+        self._fit_rows = None
 
     def calculate_technical_indicators(self):
         """
@@ -297,19 +299,68 @@ class StockDataPreprocessor:
 
         return self.data
 
-    def normalize_data(self, columns_to_scale=None):
+    def _train_row_boundary(self, seq_length, train_size):
         """
-        Нормализира данните между 0 и 1 за по-добро ML обучение.
+        Първият ред, който попада в тестова последователност.
+
+        Скалерът няма право да вижда нищо от този ред нататък — иначе
+        средното и дисперсията носят информация от теста.
+        """
+        if TARGET_COLUMN not in self.data.columns:
+            return len(self.data)
+
+        target = self.data[TARGET_COLUMN].values.astype(float)
+        labelled = np.flatnonzero(~np.isnan(target))
+        if len(labelled) == 0:
+            return len(self.data)
+
+        end = labelled[-1] + 1
+        n_seq = end - seq_length + 1
+        if n_seq < 2:
+            return end
+        return max(10, int(n_seq * train_size))
+
+    def _transform_all(self):
+        """Прилага текущия скалер върху всички редове."""
+        cols = self._scaled_columns
+        non_scaled = [c for c in self.data.columns if c not in cols]
+        scaled = pd.DataFrame(
+            self.scaler.transform(self.data[cols]),
+            columns=cols,
+            index=self.data.index,
+        )
+        self.scaled_data = pd.concat([self.data[non_scaled], scaled], axis=1)
+        return self.scaled_data
+
+    def normalize_data(self, columns_to_scale=None, train_size=0.8, seq_length=60):
+        """
+        Стандартизира features за ML обучение.
+
+        Два избора тук имат значение:
+
+        1. Скалерът се учи САМО от тренировъчните редове. Ако се учи от
+           всичко, средното и дисперсията носят информация от бъдещето и
+           резултатите излизат по-добри, отколкото са в действителност.
+
+        2. StandardScaler, не MinMax. Стационарните features имат дебели
+           опашки, а MinMax мащабира по крайните стойности — един скок от
+           10% свива всички нормални дни в няколко процента от диапазона.
+           Точно най-информативните колони (Price_Change, Gap_Pct) така
+           стават по-тихи от ограничените осцилатори и мрежата ги игнорира.
 
         Параметри:
         ----------
         columns_to_scale : list, optional
-            Списък с колони за нормализация. Ако не е зададено, използва всички числови.
+            Колони за скалиране. По подразбиране всички числови без target-ите.
+        train_size : float
+            Каква част от последователностите са тренировъчни
+        seq_length : int
+            Дължина на последователността (определя къде почва тестът)
 
         Връща:
         -------
         pandas.DataFrame
-            Нормализирани данни
+            Данни със стандартизирани features
         """
         print("[NUM] Нормализиране на данни...")
 
@@ -320,20 +371,45 @@ class StockDataPreprocessor:
             columns_to_scale = [col for col in columns_to_scale
                                 if col not in TARGET_COLUMNS]
 
-        # Запазване на не-нормализираните колони
-        non_scaled_cols = [col for col in self.data.columns if col not in columns_to_scale]
-        non_scaled_data = self.data[non_scaled_cols].copy()
+        fit_rows = self._train_row_boundary(seq_length, train_size)
 
-        # Нормализиране
-        scaled_array = self.scaler.fit_transform(self.data[columns_to_scale])
-        scaled_df = pd.DataFrame(scaled_array, columns=columns_to_scale, index=self.data.index)
+        self.scaler = StandardScaler()
+        self.scaler.fit(self.data[columns_to_scale].iloc[:fit_rows])
+        self._scaled_columns = list(columns_to_scale)
+        self._fit_rows = fit_rows
 
-        # Обединяване на нормализираните и не-нормализираните данни
-        self.scaled_data = pd.concat([non_scaled_data, scaled_df], axis=1)
+        self._transform_all()
 
-        print(f"[OK] {len(columns_to_scale)} колони нормализирани")
+        print(f"[OK] {len(columns_to_scale)} колони стандартизирани")
+        print(f"[INFO] Скалерът е трениран само от първите {fit_rows} "
+              f"от {len(self.data)} реда")
 
         return self.scaled_data
+
+    def apply_scaler(self, scaler, columns):
+        """
+        Пренормализира с вече трениран скалер.
+
+        Ползва се при предсказване със записан модел: входовете трябва да
+        са в същата скала, в която моделът е учил. Ако всеки път се тренира
+        нов скалер от новосвалените данни, моделът получава числа, които
+        не отговарят на нищо от тренировката.
+        """
+        missing = [c for c in columns if c not in self.data.columns]
+        if missing:
+            raise ValueError(
+                f"[FAIL] Записаният скалер иска колони, които ги няма: {missing[:5]}"
+            )
+
+        self.scaler = scaler
+        self._scaled_columns = list(columns)
+        self._fit_rows = None  # външен скалер — не го пипаме
+        return self._transform_all()
+
+    @property
+    def scaled_columns(self):
+        """Колоните, върху които скалерът е трениран, в реда на трениране."""
+        return list(self._scaled_columns or [])
 
     def get_feature_columns(self):
         """
@@ -405,7 +481,7 @@ class StockDataPreprocessor:
 
         return X, y, end_idx
 
-    def prepare_model_data(self, seq_length=60):
+    def prepare_model_data(self, seq_length=60, train_size=0.8):
         """
         Единствената правилна входна точка за модела.
 
@@ -424,6 +500,12 @@ class StockDataPreprocessor:
             raise ValueError("[FAIL] Първо извикай normalize_data()")
         if TARGET_COLUMN not in self.data.columns:
             raise ValueError("[FAIL] Първо извикай create_target_variable()")
+
+        # Ако скалерът е трениран за друг split, преучи го — иначе щеше да
+        # е видял редове, които сега попадат в теста.
+        required = self._train_row_boundary(seq_length, train_size)
+        if self._fit_rows is not None and self._fit_rows != required:
+            self.normalize_data(train_size=train_size, seq_length=seq_length)
 
         feature_cols = self.get_feature_columns()
         target = self.data[TARGET_COLUMN].values.astype(float)

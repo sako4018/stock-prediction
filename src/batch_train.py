@@ -96,9 +96,11 @@ class BatchTrainer:
             # Оценка
             metrics = model.evaluate(X_val, y_val)
 
-            # Запазване
+            # Запазване заедно със скалера, с който е учил
             model_name = f'{ticker}_stock_model'
-            model.save_model(model_name)
+            model.save_model(model_name,
+                             scaler=preprocessor.scaler,
+                             feature_columns=preprocessor.scaled_columns)
 
             return {
                 'ticker': ticker,

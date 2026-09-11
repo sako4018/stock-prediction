@@ -157,6 +157,10 @@ class StockPredictionModel:
         self.model = None
         self.history = {'train_loss': [], 'val_loss': []}
         self.device = device
+        self.scaler = None
+        self.scaler_columns = None
+        self.lstm_units = [128, 64, 32]
+        self.dropout_rate = 0.2
 
     def build_lstm_model(self, lstm_units=[128, 64, 32], dropout_rate=0.2):
         """
@@ -180,6 +184,11 @@ class StockPredictionModel:
             Компилиран LSTM модел
         """
         print("Building LSTM model...")
+
+        # Пазим ги, за да ги запишем в config-а — иначе модел с различни
+        # размери не може да се зареди обратно.
+        self.lstm_units = list(lstm_units)
+        self.dropout_rate = dropout_rate
 
         self.model = LSTMModel(
             n_features=self.n_features,
@@ -420,14 +429,23 @@ class StockPredictionModel:
 
         return metrics
 
-    def save_model(self, model_name='stock_lstm_model'):
+    def save_model(self, model_name='stock_lstm_model', scaler=None,
+                   feature_columns=None):
         """
         Записва модела на диск.
+
+        Скалерът се записва заедно с теглата. Без него при зареждане се
+        тренира нов скалер от новосвалените данни и моделът получава входове
+        в друга скала от тази, в която е учил — предсказанията стават шум.
 
         Параметри:
         ----------
         model_name : str
             Име на модела (без разширение)
+        scaler : sklearn scaler, optional
+            Скалерът, с който са подготвени тренировъчните данни
+        feature_columns : list, optional
+            Колоните, върху които скалерът е трениран, в същия ред
         """
         if self.model is None:
             raise ValueError("[FAIL] Няма модел за записване!")
@@ -448,12 +466,23 @@ class StockPredictionModel:
             'architecture': ARCHITECTURE_VERSION,
             'task': 'classification',
             'target': 'Price_Direction',
+            'lstm_units': self.lstm_units,
+            'dropout_rate': self.dropout_rate,
         }
 
         config_path = os.path.join(models_dir, f'{model_name}_config.json')
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=4)
         print(f"[FILE] Конфигурация записана: {config_path}")
+
+        # Скалерът и редът на колоните — задължителни за коректно предсказване
+        if scaler is not None:
+            scaler_path = os.path.join(models_dir, f'{model_name}_scaler.joblib')
+            joblib.dump({'scaler': scaler, 'columns': list(feature_columns or [])},
+                        scaler_path)
+            self.scaler = scaler
+            self.scaler_columns = list(feature_columns or [])
+            print(f"[SAVE] Скалер записан: {scaler_path}")
 
         # Записване на историята на обучението
         if self.history:
@@ -493,8 +522,11 @@ class StockPredictionModel:
         self.sequence_length = config['sequence_length']
         self.n_features = config['n_features']
 
-        # Създаване и зареждане на модела
-        self.build_lstm_model()
+        # Създаване със същите размери, с които е бил трениран
+        self.build_lstm_model(
+            lstm_units=config.get('lstm_units', [128, 64, 32]),
+            dropout_rate=config.get('dropout_rate', 0.2),
+        )
 
         model_path = os.path.join(models_dir, f'{model_name}.pt')
         if not os.path.exists(model_path):
@@ -503,6 +535,19 @@ class StockPredictionModel:
         saved_state = torch.load(model_path, map_location=self.device)
         self.model.load_state_dict(saved_state)
         print(f"[OK] Модел зареден: {model_path}")
+
+        # Скалерът, с който е трениран моделът. Без него входовете при
+        # предсказване няма да са в същата скала като при обучението.
+        scaler_path = os.path.join(models_dir, f'{model_name}_scaler.joblib')
+        if not os.path.exists(scaler_path):
+            raise FileNotFoundError(
+                f"[FAIL] Липсва скалерът на '{model_name}'. Моделът е записан "
+                f"преди скалерите да се пазят — трябва да се претренира."
+            )
+        bundle = joblib.load(scaler_path)
+        self.scaler = bundle['scaler']
+        self.scaler_columns = bundle['columns']
+        print(f"[OK] Скалер зареден: {len(self.scaler_columns)} колони")
 
         self.model.eval()
 

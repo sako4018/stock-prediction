@@ -103,8 +103,11 @@ class StockPredictionPipeline:
         if self.preprocessor is None:
             raise ValueError("[ERROR] Първо обработи данни с preprocess_data()")
 
-        # Features, target (посока 0/1) и подравнени реални цени
-        X, y, prices = self.preprocessor.prepare_model_data(seq_length=seq_length)
+        # Features, target (посока 0/1) и подравнени реални цени.
+        # train_size стига дотук, за да знае скалерът докъде е тренировката.
+        X, y, prices = self.preprocessor.prepare_model_data(
+            seq_length=seq_length, train_size=train_size
+        )
 
         # Разделяне на train/test
         X_train, X_test, y_train, y_test = self.preprocessor.split_data(
@@ -163,9 +166,13 @@ class StockPredictionPipeline:
             batch_size=batch_size
         )
 
-        # Запазване на модела
+        # Запазване на модела заедно със скалера му
         model_name = f'{self.ticker}_stock_model'
-        self.model.save_model(model_name)
+        self.model.save_model(
+            model_name,
+            scaler=self.preprocessor.scaler,
+            feature_columns=self.preprocessor.scaled_columns,
+        )
 
         print(f"\n[OK] Модел тренирован и запазен като '{model_name}'")
 
@@ -232,6 +239,11 @@ class StockPredictionPipeline:
         print("[PREDICT] ПРЕДСКАЗВАНЕ НА БЪДЕЩЕТО")
         print("="*60 + "\n")
 
+        # Подготовка на най-новите данни
+        if self.preprocessor is None:
+            self.collect_data()
+            self.preprocess_data()
+
         # Зареждане на модела ако не е зареден
         if self.model is None:
             if model_name is None:
@@ -240,10 +252,12 @@ class StockPredictionPipeline:
             self.model = StockPredictionModel()
             self.model.load_model(model_name)
 
-        # Подготовка на най-новите данни
-        if self.preprocessor is None:
-            self.collect_data()
-            self.preprocess_data()
+        # Скалерът от тренировката, а не пресен от новите данни — иначе
+        # входовете са в друга скала от тази, в която моделът е учил.
+        if self.model.scaler is not None:
+            self.preprocessor.apply_scaler(
+                self.model.scaler, self.model.scaler_columns
+            )
 
         # Последният прозорец, завършващ с днешния ден
         seq_length = self.model.sequence_length
