@@ -134,12 +134,92 @@ def test_market_asof_join_never_pulls_future_row():
     return f"проверени {checked} присъединявания, всички backward-only"
 
 
+# ---------------------------------------------------------------- fundamentals.py (as-of)
+
+def test_fundamentals_respects_publish_time():
+    """
+    ТОЧНИЯТ сценарий от заданието: стойност публикувана на
+    2026-08-01 21:00 UTC не бива да се вижда преди този момент, и
+    остава валидна до следващия отчет (не изчезва на другия ден).
+    """
+    from fundamentals import merge_fundamentals_asof
+
+    timeline = pd.DataFrame({
+        'available_at': [
+            datetime(2026, 5, 1, 21, 0, tzinfo=timezone.utc),
+            datetime(2026, 8, 1, 21, 0, tzinfo=timezone.utc),
+        ],
+        'eps_actual': [1.50, 1.80],
+        'eps_estimate': [1.45, 1.75],
+        'surprise_pct': [3.4, 2.9],
+        'revenue': [1e11, 1.1e11],
+        'net_income': [3e10, 3.1e10],
+        'trailing_eps_ttm': [6.0, 6.3],
+        'pe_ratio_at_report': [30.0, 31.0],
+    })
+
+    price_df = pd.DataFrame({
+        'Date': [
+            datetime(2026, 8, 1, 20, 0, tzinfo=timezone.utc),   # 1 час ПРЕДИ отчета
+            datetime(2026, 8, 1, 22, 0, tzinfo=timezone.utc),   # 1 час СЛЕД отчета
+            datetime(2026, 8, 15, tzinfo=timezone.utc),         # между двата отчета
+            datetime(2026, 10, 1, tzinfo=timezone.utc),         # все още преди следващия
+        ]
+    })
+
+    merged = merge_fundamentals_asof(price_df, timeline)
+
+    before = merged.iloc[0]
+    after = merged.iloc[1]
+    between = merged.iloc[2]
+    later = merged.iloc[3]
+
+    assert pd.isna(before['eps_actual']) or before['eps_actual'] == 1.50, \
+        "часът преди отчета не бива да вижда НОВИЯ отчет"
+    assert before['eps_actual'] != 1.80, "видяна е бъдеща стойност (leakage)"
+    assert after['eps_actual'] == 1.80, "стойността не се появи веднага след публикуване"
+    assert between['eps_actual'] == 1.80, "стойността изчезна преди следващия отчет"
+    assert later['eps_actual'] == 1.80, "стойността не остава валидна до следващ отчет"
+    return "публикувана стойност: невидима преди, видима веднага след, валидна до следващ отчет"
+
+
+def test_fundamentals_no_report_yet_gives_nan_not_zero():
+    """Преди първия отчет — NaN (липсваща информация), не 0 (невярна информация)."""
+    from fundamentals import merge_fundamentals_asof
+
+    timeline = pd.DataFrame({
+        'available_at': [datetime(2026, 6, 1, tzinfo=timezone.utc)],
+        'eps_actual': [1.5], 'eps_estimate': [1.4], 'surprise_pct': [7.1],
+        'revenue': [1e11], 'net_income': [3e10], 'trailing_eps_ttm': [6.0],
+        'pe_ratio_at_report': [30.0],
+    })
+    price_df = pd.DataFrame({'Date': [datetime(2026, 1, 1, tzinfo=timezone.utc)]})
+    merged = merge_fundamentals_asof(price_df, timeline)
+    assert pd.isna(merged.iloc[0]['eps_actual']), \
+        f"очаквах NaN преди първия отчет, получих {merged.iloc[0]['eps_actual']}"
+    return "ред преди първия отчет: NaN, не 0"
+
+
+def test_fundamentals_timeline_empty_does_not_crash():
+    """Тикер без earnings история (или API грешка) не бива да чупи merge-а."""
+    from fundamentals import merge_fundamentals_asof, FUNDAMENTAL_TIMELINE_COLUMNS
+    empty = pd.DataFrame(columns=FUNDAMENTAL_TIMELINE_COLUMNS)
+    price_df = pd.DataFrame({'Date': [datetime(2026, 1, 1, tzinfo=timezone.utc)]})
+    merged = merge_fundamentals_asof(price_df, empty)
+    assert len(merged) == 1
+    assert pd.isna(merged.iloc[0]['eps_actual'])
+    return "празна timeline не чупи merge-а, дава NaN колони"
+
+
 TESTS = [
     test_market_features_no_duplicate_dates,
     test_market_features_have_expected_columns,
     test_market_features_no_future_leak,
     test_treasury_yield_sane_scale,
     test_market_asof_join_never_pulls_future_row,
+    test_fundamentals_respects_publish_time,
+    test_fundamentals_no_report_yet_gives_nan_not_zero,
+    test_fundamentals_timeline_empty_does_not_crash,
 ]
 
 
