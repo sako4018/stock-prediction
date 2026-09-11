@@ -28,6 +28,11 @@ from model import StockPredictionModel
 MODELS_DIR = os.path.join(os.path.dirname(__file__), '..', 'models')
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'pooled_results.json')
 
+# Всяко пускане се добавя тук, а не презаписва предишното. Иначе сравнението
+# между вариантите (точка 5) се прави по число, което някой си спомня, а
+# спомнените числа винаги излизат по-добри, отколкото са били.
+EXPERIMENTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'experiments.jsonl')
+
 # Прагове на увереност. Моделът не е длъжен да търгува всеки ден — ако
 # познава по-добре тогава, когато е по-уверен, това се вижда тук.
 CONFIDENCE_THRESHOLDS = (0.50, 0.55, 0.60)
@@ -88,6 +93,68 @@ def evaluate_pooled(probs, y_true, meta, thresholds=CONFIDENCE_THRESHOLDS):
     }
 
 
+def log_experiment(result, label):
+    """Добавя един ред към дневника на експериментите."""
+    ev = result['evaluation']
+    row = {
+        'label': label,
+        'created_at': result['created_at'],
+        'model': result.get('model_type', 'lstm'),
+        'period': result['period'],
+        'n_tickers': len(result['tickers']),
+        'feature_groups': result['feature_groups'],
+        'seq_length': result['seq_length'],
+        'days_ahead': result['days_ahead'],
+        'n_train': result['n_train'],
+        'n_test': ev['n_test'],
+        'test_from': result['test_from'],
+        'test_to': result['test_to'],
+        'accuracy': round(ev['accuracy'], 4),
+        'base_rate': round(ev['base_rate'], 4),
+        'edge': round(ev['edge'], 4),
+        'prob_std': round(ev['prob_std'], 4),
+        'tickers_with_positive_edge': sum(1 for r in ev['by_ticker'] if r['edge'] > 0),
+    }
+    os.makedirs(os.path.dirname(EXPERIMENTS_PATH), exist_ok=True)
+    with open(EXPERIMENTS_PATH, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(row, ensure_ascii=False) + '\n')
+
+
+def load_experiments():
+    """Чете дневника. Връща празен списък, ако още няма пуснат експеримент."""
+    if not os.path.exists(EXPERIMENTS_PATH):
+        return []
+    rows = []
+    with open(EXPERIMENTS_PATH, encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
+def print_experiments():
+    """Всички пускания досега, едно на ред, сортирани по edge."""
+    rows = load_experiments()
+    if not rows:
+        print("[EXP] Още няма записани експерименти")
+        return
+
+    print("\n" + "=" * 96)
+    print("ДНЕВНИК НА ЕКСПЕРИМЕНТИТЕ (реални числа, не оценки)")
+    print("=" * 96)
+    print(f"{'вариант':<26} {'модел':<10} {'период':<7} {'цел':>4} "
+          f"{'train':>7} {'test':>6} {'точност':>8} {'база':>7} {'EDGE':>8}")
+    print("-" * 96)
+    for r in sorted(rows, key=lambda x: x['edge'], reverse=True):
+        print(f"{r['label'][:25]:<26} {r.get('model','lstm')[:9]:<10} "
+              f"{r['period']:<7} {r['days_ahead']:>3}д "
+              f"{r['n_train']:>7} {r['n_test']:>6} "
+              f"{r['accuracy']*100:>7.2f}% {r['base_rate']*100:>6.2f}% "
+              f"{r['edge']*100:>+7.2f}")
+    print("=" * 96)
+
+
 def print_report(result):
     """Чете се отгоре надолу: колко данни, какво излезе, струва ли си."""
     ev = result['evaluation']
@@ -138,7 +205,7 @@ def print_report(result):
 def train_pooled(tickers=None, period='5y', feature_groups=None, seq_length=None,
                  days_ahead=None, epochs=40, batch_size=128, train_size=0.8,
                  lstm_units=(32, 16, 8), dropout_rate=0.2, seed=42,
-                 save_as='pooled_model', verbose=False):
+                 save_as='pooled_model', label=None, verbose=False):
     """
     Пълният цикъл: данни -> тренировка -> честна оценка -> запис.
 
@@ -191,6 +258,7 @@ def train_pooled(tickers=None, period='5y', feature_groups=None, seq_length=None
     os.makedirs(os.path.dirname(RESULTS_PATH), exist_ok=True)
     with open(RESULTS_PATH, 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
+    log_experiment(result, label=label or save_as)
     print(f"[SAVE] Резултатите са записани в {RESULTS_PATH}")
 
     print_report(result)
@@ -210,8 +278,14 @@ if __name__ == "__main__":
     p.add_argument('--days-ahead', type=int, default=None)
     p.add_argument('--groups', default=None, help='напр. price,technical,market')
     p.add_argument('--name', default='pooled_model')
+    p.add_argument('--label', default=None, help='име на реда в дневника на експериментите')
+    p.add_argument('--show-log', action='store_true', help='само покажи дневника и излез')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
+
+    if args.show_log:
+        print_experiments()
+        raise SystemExit(0)
 
     train_pooled(
         tickers=args.tickers.split(',') if args.tickers else None,
@@ -222,5 +296,6 @@ if __name__ == "__main__":
         epochs=args.epochs,
         batch_size=args.batch_size,
         save_as=args.name,
+        label=args.label,
         verbose=args.verbose,
     )
