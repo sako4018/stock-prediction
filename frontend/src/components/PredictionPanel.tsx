@@ -56,15 +56,10 @@ export default function PredictionPanel({ ticker }: { ticker: string }) {
               {data.direction === 'UP' ? '↑' : data.direction === 'DOWN' ? '↓' : '?'}
             </div>
             <p className="text-xl font-bold" style={{ color: dirColor(data.direction), fontFamily: 'var(--font-sans)' }}>
-              {data.direction === 'UP' ? 'Will Go Up' : data.direction === 'DOWN' ? 'Will Go Down' : 'Uncertain'}
+              {data.direction === 'UP' ? 'Model leans up' : data.direction === 'DOWN' ? 'Model leans down' : 'No clear lean'}
             </p>
-            {data.direction !== 'UNCERTAIN' && (
-              <p className="text-sm mt-1" style={{ color: 'rgb(var(--color-txt-sec))' }}>
-                Confidence: <span className="font-bold" style={{ fontFamily: 'var(--font-mono)' }}>{data.confidence}%</span>
-              </p>
-            )}
           </div>
-          <p className="text-xs text-center" style={{ color: 'rgb(var(--color-txt-dim))' }}>{data.summary}</p>
+          <p className="text-xs text-center" style={{ color: 'rgb(var(--color-txt-dim))' }}>{data.summary} Not verified against real results yet.</p>
           {/* Voters */}
           <div>
             <p className="section-header">Indicator Votes</p>

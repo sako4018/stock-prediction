@@ -4,15 +4,15 @@ import SplitFlap from './SplitFlap'
 
 type Tone = 'up' | 'down' | 'muted' | ''
 interface Price { current_price: number; change_percent?: number }
-interface Call { dir: 'UP' | 'DOWN' | 'UNCERTAIN'; conf: number }
+interface Call { dir: 'UP' | 'DOWN' | 'UNCERTAIN' }
 
 function readCall(raw: any): Call | null {
   if (!raw) return null
-  if (raw.direction) return { dir: raw.direction, conf: Math.round(raw.confidence ?? 0) }
+  if (raw.direction) return { dir: raw.direction }
   if (raw.final_signal) {
     const s = String(raw.final_signal).toUpperCase()
     const dir = s.includes('BUY') ? 'UP' : s.includes('SELL') ? 'DOWN' : 'UNCERTAIN'
-    return { dir, conf: Math.round(raw.final_confidence ?? 0) }
+    return { dir }
   }
   return null
 }
@@ -58,8 +58,6 @@ export default function DepartureBoard({ ticker }: { ticker: string }) {
   const pct = price?.change_percent ?? 0
   const dirTone: Tone = call?.dir === 'UP' ? 'up' : call?.dir === 'DOWN' ? 'down' : 'muted'
   const direction = !call ? '' : call.dir === 'UP' ? '↑ UP' : call.dir === 'DOWN' ? '↓ DOWN' : '- HOLD'
-  const status = !call ? 'BOARDING' : call.dir === 'UNCERTAIN' ? 'HOLD' : call.conf >= 60 ? 'FIRM' : 'UNSURE'
-  const statusTone: Tone = status === 'FIRM' ? dirTone : 'muted'
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
   return (
@@ -74,17 +72,15 @@ export default function DepartureBoard({ ticker }: { ticker: string }) {
         <SplitFlap text={clock} className="text-base lg:text-lg" stagger={60} />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-x-6 gap-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5">
         <Cell label="Ticker" text={ticker} length={5} />
         <Cell label="Price" text={price ? price.current_price.toFixed(2) : ''} length={7} align="right" />
         <Cell label="Today" text={price ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : ''} length={7} align="right"
           tone={price ? (pct >= 0 ? 'up' : 'down') : ''} />
-        <Cell label="Direction" text={direction} length={6} tone={call ? dirTone : ''} />
-        <Cell label="Confidence" text={call ? `${call.conf}%` : ''} length={4} align="right" />
-        <Cell label="Status" text={status} length={8} tone={statusTone} />
+        <Cell label="Model leans" text={direction} length={6} tone={call ? dirTone : ''} />
       </div>
 
-      <p className="board-note">Confidence is the model's own estimate, not a verified track record.</p>
+      <p className="board-note">A model guess, not advice. In testing it has not yet beaten chance.</p>
     </section>
   )
 }
