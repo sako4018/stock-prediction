@@ -22,13 +22,13 @@
   --color-line: 38 38 38;
   --color-line-light: 24 24 24;
   --color-txt: 255 255 255;
-  --color-txt-sec: 170 170 170;
-  --color-txt-dim: 100 100 100;
-  --color-txt-muted: 70 70 70;
+  --color-txt-sec: 210 210 215;
+  --color-txt-dim: 165 165 172;
+  --color-txt-muted: 135 135 142;
   --color-frame: 38 38 38;
 
   --chart-grid: #1a1a1a;
-  --chart-label: #666666;
+  --chart-label: #a1a1a8;
   --chart-sma20: #0a84ff;
   --chart-sma50: #aeaeb2;
   --chart-bb: #636366;
@@ -57,13 +57,13 @@
   --color-line: 220 220 220;
   --color-line-light: 235 235 234;
   --color-txt: 20 20 20;
-  --color-txt-sec: 80 80 80;
-  --color-txt-dim: 120 120 120;
-  --color-txt-muted: 170 170 170;
+  --color-txt-sec: 60 60 67;
+  --color-txt-dim: 90 90 96;
+  --color-txt-muted: 110 110 115;
   --color-frame: 220 220 220;
 
   --chart-grid: #e0e0e0;
-  --chart-label: #888888;
+  --chart-label: #6e6e73;
   --chart-sma20: #007aff;
   --chart-sma50: #8e8e93;
   --chart-bb: #c7c7cc;
@@ -207,13 +207,13 @@ button, a, input, select { transition: all 0.15s ease; }
   font-size: 0.7rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgb(244 239 225 / 0.45);
+  color: rgb(244 239 225 / 0.7);
   margin-bottom: 0.35rem;
 }
 .board-note {
   margin-top: 1rem;
   font-size: 0.7rem;
-  color: rgb(244 239 225 / 0.4);
+  color: rgb(244 239 225 / 0.7);
 }
 .board-bolt {
   position: absolute;
