@@ -11,7 +11,6 @@ import KeyStats from './components/KeyStats'
 import NewsPanel from './components/NewsPanel'
 import MarketPanel from './components/MarketPanel'
 import AlertsPanel from './components/AlertsPanel'
-import TickerTape from './components/TickerTape'
 import PortfolioOptimizer from './components/PortfolioOptimizer'
 import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
@@ -85,14 +84,6 @@ function AppContent() {
       }}>
         <div className="flex items-center gap-3 lg:gap-6 min-w-0">
           <h1 className="text-xl lg:text-3xl leading-none"><SplitFlap text={ticker} /></h1>
-          <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded" style={{
-            background: 'rgb(var(--color-up) / 0.08)',
-            border: '1px solid rgb(var(--color-up) / 0.15)',
-          }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: 'rgb(var(--color-up))' }} />
-            <span className="text-xxs font-medium" style={{ color: 'rgb(var(--color-up))', fontFamily: 'var(--font-mono)' }}>LIVE</span>
-          </div>
-          <div className="hidden sm:block w-px h-8" style={{ background: 'rgb(var(--color-line))' }} />
           <div className="hidden sm:block"><HeroPrice ticker={ticker} /></div>
         </div>
 
@@ -123,7 +114,6 @@ function AppContent() {
       </header>
 
       <PlatformNav active={activeView} onChange={setActiveView} />
-      <TickerTape onSelect={setTicker} />
 
       <main className="flex-1 p-4 lg:p-8" style={{ background: 'var(--bg-app)' }}>
         {renderView()}

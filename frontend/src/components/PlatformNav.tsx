@@ -15,7 +15,6 @@ export default function PlatformNav({ active, onChange }: { active: string; onCh
         return (
           <button key={v.id} onClick={() => onChange(v.id)} className={`platform ${on ? 'is-active' : ''}`}
             aria-current={on ? 'page' : undefined}>
-            <span className="platform-no">{v.key}</span>
             <span>{v.label}</span>
           </button>
         )

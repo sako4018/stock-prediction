@@ -62,10 +62,6 @@ export default function DepartureBoard({ ticker }: { ticker: string }) {
 
   return (
     <section className="board" aria-label="Prediction board">
-      <span className="board-bolt" style={{ top: 8, left: 8 }} />
-      <span className="board-bolt" style={{ top: 8, right: 8 }} />
-      <span className="board-bolt" style={{ bottom: 8, left: 8 }} />
-      <span className="board-bolt" style={{ bottom: 8, right: 8 }} />
 
       <div className="board-strip">
         <span className="text-sm lg:text-base font-semibold">Next move · Departures</span>
