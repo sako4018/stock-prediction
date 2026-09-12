@@ -7,6 +7,8 @@ interface SidebarProps {
   currentTicker: string
   activeView: string
   onViewChange: (view: string) => void
+  mobileOpen: boolean
+  onClose: () => void
 }
 
 const NAV_ITEMS = [
@@ -18,19 +20,26 @@ const NAV_ITEMS = [
   { id: 'portfolio', label: 'Portfolio', icon: '▤', key: '6' },
 ]
 
-export default function Sidebar({ onSelect, currentTicker, activeView, onViewChange }: SidebarProps) {
-  const [expanded, setExpanded] = useState(false)
+export default function Sidebar({ onSelect, currentTicker, activeView, onViewChange, mobileOpen, onClose }: SidebarProps) {
+  const [hovered, setHovered] = useState(false)
+  const expanded = hovered || mobileOpen
+  const selectTicker = (t: string) => { onSelect(t); onClose() }
+  const selectView = (v: string) => { onViewChange(v); onClose() }
 
   return (
+    <>
+    {mobileOpen && (
+      <div className="fixed inset-0 z-[150] lg:hidden" style={{ background: 'rgb(0 0 0 / 0.5)' }} onClick={onClose} />
+    )}
     <aside
-      className="h-screen flex flex-col shrink-0 overflow-visible transition-all duration-300 ease-out hidden lg:flex"
+      className={`h-screen flex-col shrink-0 overflow-visible transition-all duration-300 ease-out ${mobileOpen ? 'flex fixed inset-y-0 left-0 z-[200] lg:static' : 'hidden lg:flex'}`}
       style={{
         width: expanded ? '240px' : '56px',
         background: 'rgb(var(--color-surface-alt))',
         borderRight: '1px solid rgb(var(--color-line))',
       }}
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Brand */}
       <div className="h-16 border-b flex items-center px-4 gap-2.5 shrink-0" style={{
@@ -55,7 +64,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
 
       {/* Company Selector */}
       <div className="p-2 border-b relative z-[100]" style={{ borderColor: 'rgb(var(--color-line))' }}>
-        <CompanySelector onSelect={onSelect} currentTicker={currentTicker} expanded={expanded} />
+        <CompanySelector onSelect={selectTicker} currentTicker={currentTicker} expanded={expanded} />
       </div>
 
       {/* Navigation */}
@@ -65,7 +74,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
           return (
             <button
               key={item.id}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => selectView(item.id)}
               className="w-full flex items-center gap-2.5 rounded transition-all duration-200 relative"
               style={{
                 padding: expanded ? '0.5rem 0.75rem' : '0.5rem 0',
@@ -95,7 +104,7 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
 
       {/* Watchlist */}
       <div className="flex-1 overflow-y-auto p-2 border-t" style={{ borderColor: 'rgb(var(--color-line))' }}>
-        <Watchlist onSelect={onSelect} currentTicker={currentTicker} expanded={expanded} />
+        <Watchlist onSelect={selectTicker} currentTicker={currentTicker} expanded={expanded} />
       </div>
 
       {/* Footer */}
@@ -109,5 +118,6 @@ export default function Sidebar({ onSelect, currentTicker, activeView, onViewCha
         </div>
       </div>
     </aside>
+    </>
   )
 }

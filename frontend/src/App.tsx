@@ -21,11 +21,13 @@ const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3
 function AppContent() {
   const [ticker, setTicker] = useState('AAPL')
   const [activeView, setActiveView] = useState('dashboard')
+  const [menuOpen, setMenuOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === 'dark'
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setMenuOpen(false); return }
       if ((e.target as HTMLElement).tagName === 'INPUT') return
       if (VIEW_KEYS[e.key]) { e.preventDefault(); setActiveView(VIEW_KEYS[e.key]) }
     }
@@ -76,6 +78,8 @@ function AppContent() {
         currentTicker={ticker}
         activeView={activeView}
         onViewChange={setActiveView}
+        mobileOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -86,7 +90,7 @@ function AppContent() {
         }}>
           <div className="flex items-center gap-3 lg:gap-6">
             {/* Mobile hamburger */}
-            <button onClick={() => {}} className="lg:hidden w-8 h-8 flex items-center justify-center rounded"
+            <button onClick={() => setMenuOpen(true)} aria-label="Open menu" aria-expanded={menuOpen} className="lg:hidden w-8 h-8 flex items-center justify-center rounded"
               style={{ color: 'rgb(var(--color-txt))' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 12h18M3 6h18M3 18h18" />
