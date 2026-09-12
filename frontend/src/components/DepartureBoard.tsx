@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { cachedFetch } from '../cache'
 import SplitFlap from './SplitFlap'
 
-type Tone = 'up' | 'down' | 'amber' | ''
+type Tone = 'up' | 'down' | 'muted' | ''
 interface Price { current_price: number; change_percent?: number }
 interface Call { dir: 'UP' | 'DOWN' | 'UNCERTAIN'; conf: number }
 
@@ -56,10 +56,10 @@ export default function DepartureBoard({ ticker }: { ticker: string }) {
   }, [ticker])
 
   const pct = price?.change_percent ?? 0
-  const dirTone: Tone = call?.dir === 'UP' ? 'up' : call?.dir === 'DOWN' ? 'down' : 'amber'
+  const dirTone: Tone = call?.dir === 'UP' ? 'up' : call?.dir === 'DOWN' ? 'down' : 'muted'
   const direction = !call ? '' : call.dir === 'UP' ? '↑ UP' : call.dir === 'DOWN' ? '↓ DOWN' : '- HOLD'
   const status = !call ? 'BOARDING' : call.dir === 'UNCERTAIN' ? 'HOLD' : call.conf >= 60 ? 'FIRM' : 'UNSURE'
-  const statusTone: Tone = status === 'FIRM' ? dirTone : 'amber'
+  const statusTone: Tone = status === 'FIRM' ? dirTone : 'muted'
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
   return (

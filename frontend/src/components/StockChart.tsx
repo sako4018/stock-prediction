@@ -125,7 +125,7 @@ export default function StockChart({ ticker }: StockChartProps) {
               style={{
                 fontFamily: 'var(--font-sans)',
                 background: period === p ? 'rgb(var(--color-accent))' : 'transparent',
-                color: period === p ? '#0C0A09' : 'rgb(var(--color-txt-muted))',
+                color: period === p ? '#fff' : 'rgb(var(--color-txt-muted))',
               }}>{p}</button>
           ))}
         </div>
@@ -139,7 +139,7 @@ export default function StockChart({ ticker }: StockChartProps) {
                 style={{
                   fontFamily: 'var(--font-sans)',
                   background: chartType === t ? 'rgb(var(--color-accent))' : 'rgb(var(--color-surface))',
-                  color: chartType === t ? '#0C0A09' : 'rgb(var(--color-txt-muted))',
+                  color: chartType === t ? '#fff' : 'rgb(var(--color-txt-muted))',
                 }}>{t === 'candle' ? 'Candle' : 'Area'}</button>
             ))}
           </div>
