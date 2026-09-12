@@ -52,15 +52,15 @@ export default function PredictionPanel({ ticker }: { ticker: string }) {
             background: `rgb(${data.direction === 'UP' ? 'var(--color-up)' : data.direction === 'DOWN' ? 'var(--color-down)' : 'var(--color-surface-overlay)'} / 0.06)`,
             border: `1px solid rgb(${data.direction === 'UP' ? 'var(--color-up)' : data.direction === 'DOWN' ? 'var(--color-down)' : 'var(--color-line)'} / 0.15)`,
           }}>
-            <div className="text-5xl font-bold mb-2" style={{ color: dirColor(data.direction), fontFamily: '"JetBrains Mono", monospace' }}>
+            <div className="text-5xl font-bold mb-2" style={{ color: dirColor(data.direction), fontFamily: 'var(--font-mono)' }}>
               {data.direction === 'UP' ? '↑' : data.direction === 'DOWN' ? '↓' : '?'}
             </div>
-            <p className="text-xl font-bold" style={{ color: dirColor(data.direction), fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>
+            <p className="text-xl font-bold" style={{ color: dirColor(data.direction), fontFamily: 'var(--font-sans)' }}>
               {data.direction === 'UP' ? 'Will Go Up' : data.direction === 'DOWN' ? 'Will Go Down' : 'Uncertain'}
             </p>
             {data.direction !== 'UNCERTAIN' && (
               <p className="text-sm mt-1" style={{ color: 'rgb(var(--color-txt-sec))' }}>
-                Confidence: <span className="font-bold" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{data.confidence}%</span>
+                Confidence: <span className="font-bold" style={{ fontFamily: 'var(--font-mono)' }}>{data.confidence}%</span>
               </p>
             )}
           </div>
@@ -74,13 +74,13 @@ export default function PredictionPanel({ ticker }: { ticker: string }) {
                 return (
                   <div key={k} className="flex items-center justify-between py-1.5 px-3 rounded" style={{ background: 'rgb(var(--color-surface))' }}>
                     <span className="text-xs" style={{ color: 'rgb(var(--color-txt-sec))' }}>{v.label}</span>
-                    <span className="text-sm font-bold" style={{ color: vc.c, fontFamily: '"JetBrains Mono", monospace' }}>{vc.t}</span>
+                    <span className="text-sm font-bold" style={{ color: vc.c, fontFamily: 'var(--font-mono)' }}>{vc.t}</span>
                   </div>
                 )
               })}
             </div>
           </div>
-          <div className="flex items-center justify-center gap-4 text-xxs" style={{ color: 'rgb(var(--color-txt-muted))', fontFamily: '"JetBrains Mono", monospace' }}>
+          <div className="flex items-center justify-center gap-4 text-xxs" style={{ color: 'rgb(var(--color-txt-muted))', fontFamily: 'var(--font-mono)' }}>
             <span style={{ color: 'rgb(var(--color-up))' }}>{data.up_votes} UP</span>
             <span>·</span>
             <span style={{ color: 'rgb(var(--color-down))' }}>{data.down_votes} DOWN</span>

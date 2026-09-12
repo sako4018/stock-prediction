@@ -13,7 +13,7 @@ function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-1.5 text-xs" style={{ borderBottom: '1px solid rgb(var(--color-line) / 0.2)' }}>
       <span style={{ color: 'rgb(var(--color-txt-dim))' }}>{label}</span>
-      <span className="font-medium tabular-nums" style={{ color: 'rgb(var(--color-txt))', fontFamily: '"JetBrains Mono", monospace' }}>{value}</span>
+      <span className="font-medium tabular-nums" style={{ color: 'rgb(var(--color-txt))', fontFamily: 'var(--font-mono)' }}>{value}</span>
     </div>
   )
 }

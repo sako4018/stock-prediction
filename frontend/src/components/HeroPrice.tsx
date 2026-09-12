@@ -22,7 +22,7 @@ function AnimatedPrice({ value, decimals = 2, prefix = '$' }: { value: number; d
     return () => cancelAnimationFrame(rafRef.current)
   }, [value])
 
-  return <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>{prefix}{display.toFixed(decimals)}</span>
+  return <span style={{ fontFamily: 'var(--font-mono)' }}>{prefix}{display.toFixed(decimals)}</span>
 }
 
 export default function HeroPrice({ ticker }: { ticker: string }) {
@@ -54,7 +54,7 @@ export default function HeroPrice({ ticker }: { ticker: string }) {
         {up ? '+' : ''}<AnimatedPrice value={change} decimals={2} />
       </span>
       <span className="text-xxs font-semibold px-2 py-0.5 rounded" style={{
-        fontFamily: '"JetBrains Mono", monospace',
+        fontFamily: 'var(--font-mono)',
         background: up ? 'rgb(var(--color-up) / 0.08)' : 'rgb(var(--color-down) / 0.08)',
         color: up ? 'rgb(var(--color-up))' : 'rgb(var(--color-down))',
       }}>

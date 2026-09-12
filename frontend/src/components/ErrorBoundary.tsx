@@ -33,12 +33,12 @@ export default class ErrorBoundary extends Component<Props, State> {
           justifyContent: 'center',
           background: '#000',
           color: '#fff',
-          fontFamily: '"DM Sans", sans-serif',
+          fontFamily: 'var(--font-sans)',
           padding: '2rem',
         }}>
           <div style={{ textAlign: 'center', maxWidth: 500 }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-            <h2 style={{ fontFamily: '"Space Grotesk", sans-serif', marginBottom: 8 }}>
+            <h2 style={{ fontFamily: 'var(--font-sans)', marginBottom: 8 }}>
               Something went wrong
             </h2>
             <p style={{ color: '#a3a3a3', fontSize: 14, marginBottom: 24 }}>
@@ -56,7 +56,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 border: 'none',
                 borderRadius: 6,
                 cursor: 'pointer',
-                fontFamily: '"Space Grotesk", sans-serif',
+                fontFamily: 'var(--font-sans)',
                 fontWeight: 600,
                 fontSize: 14,
               }}

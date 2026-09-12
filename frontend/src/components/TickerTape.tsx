@@ -52,7 +52,7 @@ export default function TickerTape({ onSelect }: { onSelect: (ticker: string) =>
       borderBottom: '1px solid rgb(var(--color-line))',
     }}>
       <div className="flex items-center gap-5 animate-ticker whitespace-nowrap" style={{
-        fontFamily: '"JetBrains Mono", monospace',
+        fontFamily: 'var(--font-mono)',
         fontSize: '0.6875rem',
       }}>
         {doubled.map((item, i) => {

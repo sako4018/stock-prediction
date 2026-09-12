@@ -83,7 +83,7 @@ function AppContent() {
             border: '1px solid rgb(var(--color-up) / 0.15)',
           }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ background: 'rgb(var(--color-up))' }} />
-            <span className="text-xxs font-medium" style={{ color: 'rgb(var(--color-up))', fontFamily: '"JetBrains Mono", monospace' }}>LIVE</span>
+            <span className="text-xxs font-medium" style={{ color: 'rgb(var(--color-up))', fontFamily: 'var(--font-mono)' }}>LIVE</span>
           </div>
           <div className="hidden sm:block w-px h-8" style={{ background: 'rgb(var(--color-line))' }} />
           <div className="hidden sm:block"><HeroPrice ticker={ticker} /></div>

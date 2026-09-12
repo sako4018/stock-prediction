@@ -81,11 +81,11 @@ export default function CompanySelector({ onSelect, currentTicker, expanded = tr
         <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{
           background: 'rgb(var(--color-accent) / 0.12)',
         }}>
-          <span className="text-xxs font-semibold text-accent" style={{ fontFamily: '"JetBrains Mono", monospace' }}>{currentTicker.slice(0, 2)}</span>
+          <span className="text-xxs font-semibold text-accent" style={{ fontFamily: 'var(--font-mono)' }}>{currentTicker.slice(0, 2)}</span>
         </div>
         {expanded && (
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-txt" style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>{currentTicker}</p>
+            <p className="text-xs font-semibold text-txt" style={{ fontFamily: 'var(--font-sans)' }}>{currentTicker}</p>
             <p className="text-xxs text-txt-muted truncate">{currentCompany?.name || 'Custom'}</p>
           </div>
         )}

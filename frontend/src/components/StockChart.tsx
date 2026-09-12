@@ -99,7 +99,7 @@ export default function StockChart({ ticker }: StockChartProps) {
       {/* OHLC Tooltip */}
       {hoverData && (
         <div className="flex items-center gap-4 mb-3 text-xs tabular-nums animate-fade-in" style={{
-          fontFamily: '"JetBrains Mono", monospace',
+          fontFamily: 'var(--font-mono)',
           color: 'rgb(var(--color-txt-sec))',
         }}>
           <span className="text-txt-dim">{hoverData.Date}</span>
@@ -123,7 +123,7 @@ export default function StockChart({ ticker }: StockChartProps) {
             <button key={p} onClick={() => setPeriod(p)}
               className="px-2.5 py-1 rounded text-xxs font-medium transition-colors"
               style={{
-                fontFamily: '"Space Grotesk", system-ui, sans-serif',
+                fontFamily: 'var(--font-sans)',
                 background: period === p ? 'rgb(var(--color-accent))' : 'transparent',
                 color: period === p ? '#0C0A09' : 'rgb(var(--color-txt-muted))',
               }}>{p}</button>
@@ -137,7 +137,7 @@ export default function StockChart({ ticker }: StockChartProps) {
               <button key={t} onClick={() => setChartType(t)}
                 className="px-2.5 py-1 text-xxs font-medium transition-colors"
                 style={{
-                  fontFamily: '"Space Grotesk", system-ui, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                   background: chartType === t ? 'rgb(var(--color-accent))' : 'rgb(var(--color-surface))',
                   color: chartType === t ? '#0C0A09' : 'rgb(var(--color-txt-muted))',
                 }}>{t === 'candle' ? 'Candle' : 'Area'}</button>
@@ -153,7 +153,7 @@ export default function StockChart({ ticker }: StockChartProps) {
                 checked={(showIndicators as any)[key]}
                 onChange={(e) => setShowIndicators({ ...showIndicators, [key]: e.target.checked })}
                 className="w-3 h-3 rounded accent-accent" style={{ borderColor: 'rgb(var(--color-line))' }} />
-              <span className="text-xxs text-txt-muted" style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>{label}</span>
+              <span className="text-xxs text-txt-muted" style={{ fontFamily: 'var(--font-sans)' }}>{label}</span>
             </label>
           ))}
         </div>
@@ -253,7 +253,7 @@ export default function StockChart({ ticker }: StockChartProps) {
       <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgb(var(--color-line))' }}>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xxs text-txt-muted" style={{
-            fontFamily: '"Space Grotesk", system-ui, sans-serif',
+            fontFamily: 'var(--font-sans)',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
           }}>RSI</span>
