@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { cachedFetch } from '../cache'
+import SplitFlap from './SplitFlap'
 
 function AnimatedPrice({ value, decimals = 2, prefix = '$' }: { value: number; decimals?: number; prefix?: string }) {
   const [display, setDisplay] = useState(value)
@@ -40,7 +41,7 @@ export default function HeroPrice({ ticker }: { ticker: string }) {
     return () => clearInterval(i)
   }, [ticker])
 
-  if (!data || data.current_price == null) return <span style={{ color: 'rgb(var(--color-txt-muted))' }}>Loading...</span>
+  if (!data || data.current_price == null) return <SplitFlap text="" length={7} className="text-xl lg:text-2xl" />
 
   const up = (data.change || 0) >= 0
   const change = data.change || 0
@@ -48,13 +49,7 @@ export default function HeroPrice({ ticker }: { ticker: string }) {
 
   return (
     <div className="flex items-baseline gap-3">
-      <span className="text-3xl font-bold tabular-nums" style={{
-        fontFamily: '"JetBrains Mono", monospace',
-        color: 'rgb(var(--color-txt))',
-        letterSpacing: '-0.02em',
-      }}>
-        <AnimatedPrice value={data.current_price} />
-      </span>
+      <SplitFlap text={`$${data.current_price.toFixed(2)}`} className="text-xl lg:text-2xl" />
       <span className="text-sm font-medium tabular-nums" style={{ color: up ? 'rgb(var(--color-up))' : 'rgb(var(--color-down))' }}>
         {up ? '+' : ''}<AnimatedPrice value={change} decimals={2} />
       </span>

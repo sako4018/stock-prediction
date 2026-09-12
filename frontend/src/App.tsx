@@ -15,6 +15,7 @@ import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
 import PeriodReturns from './components/PeriodReturns'
 import ErrorBoundary from './components/ErrorBoundary'
+import SplitFlap from './components/SplitFlap'
 
 const VIEW_KEYS: Record<string, string> = { '1': 'dashboard', '2': 'predict', '3': 'backtest', '4': 'signals', '5': 'fundamentals', '6': 'portfolio' }
 
@@ -96,11 +97,7 @@ function AppContent() {
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <h1 className="text-2xl lg:text-4xl font-bold tracking-tight" style={{
-              fontFamily: '"Space Grotesk", system-ui, sans-serif',
-              color: 'rgb(var(--color-txt))',
-              letterSpacing: '-0.02em',
-            }}>{ticker}</h1>
+            <h1 className="text-xl lg:text-3xl leading-none"><SplitFlap text={ticker} /></h1>
             <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded" style={{
               background: 'rgb(var(--color-up) / 0.08)',
               border: '1px solid rgb(var(--color-up) / 0.15)',

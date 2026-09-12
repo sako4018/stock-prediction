@@ -5,10 +5,12 @@ import FundamentalsPanel from './FundamentalsPanel'
 import KeyStats from './KeyStats'
 import NewsPanel from './NewsPanel'
 import MarketPanel from './MarketPanel'
+import DepartureBoard from './DepartureBoard'
 
 export default function Dashboard({ ticker }: { ticker: string }) {
   return (
     <div className="space-y-4" key={ticker}>
+      <DepartureBoard ticker={ticker} />
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <div className="xl:col-span-3"><StockChart ticker={ticker} /></div>
         <div className="xl:col-span-2 space-y-4">
