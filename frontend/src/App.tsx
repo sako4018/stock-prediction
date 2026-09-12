@@ -7,12 +7,14 @@ import BacktestPanel from './components/BacktestPanel'
 import StockChart from './components/StockChart'
 import FundamentalsPanel from './components/FundamentalsPanel'
 import MultiTimeframePanel from './components/MultiTimeframePanel'
+import KeyStats from './components/KeyStats'
+import NewsPanel from './components/NewsPanel'
+import MarketPanel from './components/MarketPanel'
 import AlertsPanel from './components/AlertsPanel'
 import TickerTape from './components/TickerTape'
 import PortfolioOptimizer from './components/PortfolioOptimizer'
 import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
-import PeriodReturns from './components/PeriodReturns'
 import ErrorBoundary from './components/ErrorBoundary'
 import SplitFlap from './components/SplitFlap'
 import CompanySelector from './components/CompanySelector'
@@ -61,9 +63,14 @@ function AppContent() {
       case 'portfolio': return <PortfolioOptimizer />
       case 'fundamentals':
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <FundamentalsPanel ticker={ticker} />
-            <MultiTimeframePanel ticker={ticker} />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <FundamentalsPanel ticker={ticker} />
+              <KeyStats ticker={ticker} />
+              <MultiTimeframePanel ticker={ticker} />
+              <MarketPanel />
+            </div>
+            <NewsPanel ticker={ticker} />
           </div>
         )
       default: return <Dashboard ticker={ticker} />
@@ -119,9 +126,6 @@ function AppContent() {
       <TickerTape onSelect={setTicker} />
 
       <main className="flex-1 p-4 lg:p-8" style={{ background: 'var(--bg-app)' }}>
-        <div className="mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgb(var(--color-surface-elevated))', border: '1px solid rgb(var(--color-line))' }}>
-          <PeriodReturns ticker={ticker} />
-        </div>
         {renderView()}
       </main>
     </div>
