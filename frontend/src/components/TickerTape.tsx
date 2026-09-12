@@ -8,7 +8,7 @@ interface TickerItem {
   changePercent: number | null
 }
 
-export default function TickerTape() {
+export default function TickerTape({ onSelect }: { onSelect: (ticker: string) => void }) {
   const [items, setItems] = useState<TickerItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -58,7 +58,8 @@ export default function TickerTape() {
         {doubled.map((item, i) => {
           const isPositive = (item.changePercent ?? 0) >= 0
           return (
-            <span key={`${item.ticker}-${i}`} className="flex items-center gap-2">
+            <button key={`${item.ticker}-${i}`} onClick={() => onSelect(item.ticker)} className="flex items-center gap-2"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
               <span className="font-semibold" style={{ color: 'rgb(var(--color-txt))' }}>{item.ticker}</span>
               {item.price ? (
                 <>
@@ -70,7 +71,7 @@ export default function TickerTape() {
               ) : (
                 <span style={{ color: 'rgb(var(--color-txt-dim))' }}>—</span>
               )}
-            </span>
+            </button>
           )
         })}
       </div>
