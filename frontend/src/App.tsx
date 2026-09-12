@@ -17,7 +17,7 @@ import BatchTrainPanel from './components/BatchTrainPanel'
 import HeroPrice from './components/HeroPrice'
 import ErrorBoundary from './components/ErrorBoundary'
 import SplitFlap from './components/SplitFlap'
-import CompanySelector from './components/CompanySelector'
+import StockSearch from './components/StockSearch'
 import PlatformNav, { VIEWS } from './components/PlatformNav'
 
 function AppContent() {
@@ -97,7 +97,7 @@ function AppContent() {
         </div>
 
         <div className="flex items-center gap-2 lg:gap-3">
-          <div className="w-40 sm:w-56"><CompanySelector onSelect={setTicker} currentTicker={ticker} /></div>
+          <StockSearch onSelect={setTicker} />
           <button
             onClick={toggleTheme}
             aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
