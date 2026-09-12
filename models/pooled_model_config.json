@@ -1,6 +1,6 @@
 {
     "sequence_length": 60,
-    "n_features": 37,
+    "n_features": 42,
     "model_name": "pooled_model",
     "architecture": "lstm_attention_v3_clf",
     "task": "classification",
