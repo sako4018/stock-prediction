@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useTheme } from '../ThemeContext'
 import { cachedFetch } from '../cache'
 
@@ -68,6 +68,15 @@ export default function StockChart({ ticker }: StockChartProps) {
     }
   }, [data])
 
+  const [boxW, setBoxW] = useState(900)
+  const observerRef = useRef<ResizeObserver | null>(null)
+  const measureRef = useCallback((el: HTMLDivElement | null) => {
+    observerRef.current?.disconnect()
+    if (!el) return
+    observerRef.current = new ResizeObserver(([entry]) => setBoxW(Math.floor(entry.contentRect.width)))
+    observerRef.current.observe(el)
+  }, [])
+
   const periods = ['1mo', '3mo', '6mo', '1y', '2y', '5y']
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -86,7 +95,7 @@ export default function StockChart({ ticker }: StockChartProps) {
     }} />
   }
 
-  const W = 900, H = 380
+  const W = Math.max(320, boxW), H = 380
   const pad = { t: 16, r: 56, b: 24, l: 8 }
   const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b
   const { yMin, yMax, volumeMax } = chartMetrics
@@ -160,7 +169,7 @@ export default function StockChart({ ticker }: StockChartProps) {
       </div>
 
       {/* Chart */}
-      <div className="overflow-x-auto">
+      <div ref={measureRef} className="overflow-x-auto">
         <svg width={W} height={H} className="select-none cursor-crosshair"
           onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
           <defs>
